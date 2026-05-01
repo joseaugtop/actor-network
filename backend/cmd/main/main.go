@@ -2,64 +2,30 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"grafotb1/model"
+	"log"
+	"net/http"
 	"os"
 
-	"github.com/dominikbraun/graph"
+	"grafotb1/model"
+	"grafotb1/server"
+	"grafotb1/service"
 )
 
-func showMovies(movies []model.Movie){
-	for _, m := range movies {
-        fmt.Printf("id:", m.Id, "title:",m.Title, "cast:",m.Cast,)
-    }
-}
-
-//seed
-func populateGraphFromArray(movies []model.Movie) graph.Graph[string, string] {
-    g := graph.New(graph.StringHash)
-
-    for _, movie := range movies {
-        g.AddVertex(movie.Title)
-        for _, actor := range movie.Cast {
-            g.AddVertex(actor)
-            g.AddEdge(movie.Title, actor)
-        }
-    }
-
-    return g
-}
-
-//show
-func showGraph(g graph.Graph[string, string]) {
-    adjacencyMap, _ := g.AdjacencyMap()
-
-    for vertex, adjacent  := range adjacencyMap {
-		fmt.Println("{")
-        fmt.Printf("\tVértice: %s,\n\tAssociados: {\n", vertex)
-        for neighbor := range adjacent {
-            fmt.Printf("\t\t%s\n", neighbor)
-
-        }
-        fmt.Printf("\t},\n")
-        fmt.Println("},")
-        fmt.Println()
-    }
-}
-
 func main() {
-	data, err := os.ReadFile("../api/latest_movies.json")
-    if err != nil {
-        fmt.Printf("Error: %v\n", err)
-    }
+	data, err := os.ReadFile("api/latest_movies.json")
+	if err != nil {
+		log.Fatalf("erro ao ler o arquivo latest_movies.json: %v", err)
+	}
 
 	var movies []model.Movie
-    if err := json.Unmarshal(data, &movies); err != nil {
-        fmt.Printf("Error: %v\n", err)
-    }
+	if err := json.Unmarshal(data, &movies); err != nil {
+		log.Fatalf("erro ao processar o JSON de filmes: %v", err)
+	}
 
-	g := populateGraphFromArray(movies)	
+	svc := service.New(movies)
+	log.Printf("grafo construído — %d filmes, %d atores únicos", len(movies), len(svc.Actors()))
 
-	showGraph(g)
-
+	srv := server.New(svc)
+	log.Println("servidor iniciado em http://localhost:8081")
+	log.Fatal(http.ListenAndServe(":8081", srv.Routes()))
 }
