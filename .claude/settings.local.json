@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ng version *)",
+      "Bash(ng new *)",
+      "Bash(npx ng *)"
+    ]
+  }
+}

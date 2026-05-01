@@ -1,0 +1,171 @@
+@let actorList = actors();
+
+<div class="page">
+  <header class="hero">
+    <h1>
+      <span class="emoji">🎬</span>
+      8 Graus de Network
+    </h1>
+    <p class="subtitle">
+      Encontre o relacionamento mais próximo entre dois atores através
+      dos filmes em comum, usando uma busca em largura (BFS) sobre um
+      grafo de Atores e Filmes.
+    </p>
+    @if (!loadingActors() && !loadError()) {
+      <span class="badge">{{ actorsCount() }} atores carregados</span>
+    }
+  </header>
+
+  @if (loadingActors()) {
+    <div class="card status">Carregando atores…</div>
+  }
+
+  @if (loadError()) {
+    <div class="card error">{{ loadError() }}</div>
+  }
+
+  @if (!loadingActors() && !loadError()) {
+    <section class="card form">
+      <datalist id="actor-options">
+        @for (a of actorList; track a) {
+          <option [value]="a"></option>
+        }
+      </datalist>
+
+      <div class="grid">
+        <label class="field">
+          <span>Ator de Origem</span>
+          <input
+            type="text"
+            list="actor-options"
+            placeholder="Ex: Tom Hanks"
+            [ngModel]="from()"
+            (ngModelChange)="from.set($event)"
+            autocomplete="off"
+          />
+        </label>
+
+        <button
+          type="button"
+          class="swap"
+          (click)="swap()"
+          title="Inverter origem e destino"
+          aria-label="Inverter origem e destino"
+        >
+          ⇄
+        </button>
+
+        <label class="field">
+          <span>Ator de Destino</span>
+          <input
+            type="text"
+            list="actor-options"
+            placeholder="Ex: Zendaya"
+            [ngModel]="to()"
+            (ngModelChange)="to.set($event)"
+            autocomplete="off"
+          />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button
+          type="button"
+          class="primary"
+          [disabled]="!canSearch()"
+          (click)="runBfs()"
+        >
+          🔎 BFS · Caminho mais curto
+        </button>
+
+        <button
+          type="button"
+          class="secondary"
+          [disabled]="!canSearch()"
+          (click)="runBfs8()"
+        >
+          🌐 BFS · Comprimento máximo 8
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (searching()) {
+    <div class="card status">Buscando…</div>
+  }
+
+  @if (errorMessage()) {
+    <div class="card error">{{ errorMessage() }}</div>
+  }
+
+  @if (mode() === 'bfs' && bfsResult(); as res) {
+    <section class="card result">
+      <h2>Resultado · BFS</h2>
+
+      @if (!res.found) {
+        <p class="not-found">
+          ❌ {{ res.message ?? 'Nenhum relacionamento encontrado entre os atores informados.' }}
+        </p>
+      } @else {
+        <p class="length">
+          Comprimento do caminho:
+          <strong>{{ res.length }}</strong> arestas
+          <span class="muted">({{ res.path.length }} vértices)</span>
+        </p>
+
+        <ol class="path">
+          @for (node of res.path; track node + $index) {
+            <li [class.movie]="isMovieNode(node, $index)" [class.actor]="!isMovieNode(node, $index)">
+              <span class="role">
+                {{ isMovieNode(node, $index) ? '🎞️ Filme' : '🎭 Ator' }}
+              </span>
+              <span class="name">{{ node }}</span>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  }
+
+  @if (mode() === 'bfs8' && bfs8Result(); as res) {
+    <section class="card result">
+      <h2>Resultado · BFS Comprimento Máximo 8</h2>
+
+      @if (!res.found) {
+        <p class="not-found">
+          ❌ {{ res.message ?? 'Nenhum relacionamento encontrado dentro do comprimento máximo.' }}
+        </p>
+      } @else {
+        <p class="length">
+          <strong>{{ res.count }}</strong> caminho(s) encontrado(s) com comprimento mínimo
+          <strong>{{ res.length }}</strong> arestas.
+        </p>
+
+        <div class="paths-list">
+          @for (item of res.paths; track trackPath($index, item); let i = $index) {
+            <article class="path-card">
+              <header>
+                <span class="path-index">#{{ i + 1 }}</span>
+                <span class="path-len">{{ item.length }} arestas</span>
+              </header>
+              <ol class="path">
+                @for (node of item.path; track node + $index) {
+                  <li [class.movie]="isMovieNode(node, $index)" [class.actor]="!isMovieNode(node, $index)">
+                    <span class="role">
+                      {{ isMovieNode(node, $index) ? '🎞️' : '🎭' }}
+                    </span>
+                    <span class="name">{{ node }}</span>
+                  </li>
+                }
+              </ol>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <footer class="foot">
+    <span>UNESC · Teoria de Grafos · TD 01</span>
+  </footer>
+</div>
