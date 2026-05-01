@@ -20,6 +20,7 @@ func New(svc *service.Service) *Server {
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/actors", s.handleActors)
+	mux.HandleFunc("/show", s.handleShow)
 	mux.HandleFunc("/bfs", s.handleBFS)
 	mux.HandleFunc("/bfs8", s.handleBFS8)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
@@ -45,6 +46,18 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (s *Server) handleShow(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "método não permitido"})
+		return
+	}
+	adj := s.svc.AdjacencyMap()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"count":     len(adj),
+		"adjacency": adj,
+	})
 }
 
 func (s *Server) handleActors(w http.ResponseWriter, r *http.Request) {
