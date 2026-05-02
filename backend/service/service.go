@@ -1,3 +1,4 @@
+// Lógica de grafo: construção da rede ator-filme e buscas (BFS e DFS).
 package service
 
 import (
@@ -11,15 +12,15 @@ import (
 
 var ErrVertexNotFound = errors.New("vértice não encontrado")
 
+// --- Grafo ------------------------------------------------------------------
+
 type Service struct {
 	g      graph.Graph[string, string]
 	actors map[string]struct{}
 	movies map[string]struct{}
 }
 
-// New builds the actor-movie graph from the movies dataset.
-// Edges are added in both directions so traversals can move freely
-// from actor to movie and vice-versa.
+// Monta o grafo com arestas nos dois sentidos (filme ↔ ator).
 func New(movies []model.Movie) *Service {
 	g := graph.New(graph.StringHash, graph.Directed())
 	actors := map[string]struct{}{}
@@ -38,6 +39,8 @@ func New(movies []model.Movie) *Service {
 	return &Service{g: g, actors: actors, movies: titles}
 }
 
+// --- Consultas --------------------------------------------------------------
+
 func (s *Service) Actors() []string {
 	out := make([]string, 0, len(s.actors))
 	for a := range s.actors {
@@ -52,7 +55,6 @@ func (s *Service) HasVertex(v string) bool {
 	return err == nil
 }
 
-// AdjacencyMap exposes the underlying adjacency for the show endpoint.
 func (s *Service) AdjacencyMap() map[string][]string {
 	adj, _ := s.g.AdjacencyMap()
 	out := make(map[string][]string, len(adj))
@@ -67,8 +69,9 @@ func (s *Service) AdjacencyMap() map[string][]string {
 	return out
 }
 
-// ShortestPath runs a classic BFS and returns the shortest path between
-// from and to. Returns nil when no path exists.
+// --- BFS: caminho mínimo ----------------------------------------------------
+
+// Retorna o menor caminho entre from e to, ou nil se não existir.
 func (s *Service) ShortestPath(from, to string) ([]string, error) {
 	if !s.HasVertex(from) || !s.HasVertex(to) {
 		return nil, ErrVertexNotFound
@@ -79,6 +82,8 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 
 	adj, _ := s.g.AdjacencyMap()
 
+	// parent guarda de onde cada vértice foi alcançado e também
+	// faz o papel de "visitados".
 	parent := map[string]string{from: ""}
 	queue := []string{from}
 
@@ -112,15 +117,14 @@ func reconstruct(parent map[string]string, from, to string) []string {
 	}
 }
 
-// MaxPathsCap caps the number of paths returned by AllPathsUpTo so
-// the response stays within a size the browser can render.
+// --- DFS: todos os caminhos até maxLen --------------------------------------
+
+// Limite para a resposta não estourar o que o navegador renderiza.
 const MaxPathsCap = 10000
 
-// AllPathsUpTo enumerates every simple path (no repeated vertices) from
-// `from` to `to` with edge count <= maxLen. Uses iterative deepening so
-// shorter paths are always discovered before longer ones — if the cap
-// kicks in at depth k, every path of length < k is guaranteed complete.
-// Returns paths sorted by length ascending, then lexicographically.
+// Enumera todo caminho simples de from até to com até maxLen arestas.
+// Faz aprofundamento iterativo (d = 1..maxLen), então caminhos menores
+// vêm primeiro e a truncagem só corta os mais longos.
 func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, error) {
 	if !s.HasVertex(from) || !s.HasVertex(to) {
 		return nil, false, ErrVertexNotFound
@@ -131,8 +135,7 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 
 	adj, _ := s.g.AdjacencyMap()
 
-	// Pre-sort neighbours once so DFS expansion is deterministic and
-	// the final result is already mostly ordered.
+	// Vizinhos pré-ordenados → expansão determinística.
 	sortedNeighbours := make(map[string][]string, len(adj))
 	for v, ns := range adj {
 		ss := make([]string, 0, len(ns))
@@ -148,8 +151,7 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 	visited := map[string]bool{from: true}
 	path := []string{from}
 
-	// dfs collects simple paths from `node` to `to` of length exactly
-	// `remaining` more edges. `remaining > 0` is the loop invariant.
+	// dfs busca caminhos com exatamente `remaining` arestas restantes.
 	var dfs func(node string, remaining int)
 	dfs = func(node string, remaining int) {
 		if truncated {
@@ -173,9 +175,8 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 				continue
 			}
 			if n == to {
-				// `to` only counts when we've used exactly `remaining`
-				// edges; landing on it earlier would mean a shorter path,
-				// which a previous iteration already collected.
+				// chegar em `to` antes da última aresta = caminho
+				// mais curto, já pego em iteração anterior.
 				continue
 			}
 			visited[n] = true

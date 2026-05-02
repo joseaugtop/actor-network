@@ -1,3 +1,4 @@
+// Lê o dataset, monta o grafo e sobe o servidor HTTP.
 package main
 
 import (
