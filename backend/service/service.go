@@ -16,24 +16,23 @@ var ErrVertexNotFound = errors.New("vértice não encontrado")
 
 type Service struct {
 	g      graph.Graph[string, string]
-	actors map[string]struct{}
-	movies map[string]struct{}
+	actors map[string]bool
+	movies map[string]bool
 }
 
-// Monta o grafo com arestas nos dois sentidos (filme ↔ ator).
-func New(movies []model.Movie) *Service {
-	g := graph.New(graph.StringHash, graph.Directed())
-	actors := map[string]struct{}{}
-	titles := map[string]struct{}{}
+// Seed carrega os filmes no grafo, criando vértices e arestas.
+func Seed(movies []model.Movie) *Service {
+	g := graph.New(graph.StringHash)
+	actors := map[string]bool{}
+	titles := map[string]bool{}
 
 	for _, m := range movies {
-		titles[m.Title] = struct{}{}
+		titles[m.Title] = true
 		_ = g.AddVertex(m.Title)
 		for _, a := range m.Cast {
-			actors[a] = struct{}{}
+			actors[a] = true
 			_ = g.AddVertex(a)
 			_ = g.AddEdge(m.Title, a)
-			_ = g.AddEdge(a, m.Title)
 		}
 	}
 	return &Service{g: g, actors: actors, movies: titles}
@@ -105,6 +104,7 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 	return nil, nil
 }
 
+// reconstrói o caminho do destino até a origem usando o mapa parent, invertendo para a ordem correta.
 func reconstruct(parent map[string]string, from, to string) []string {
 	var path []string
 	cur := to
@@ -135,7 +135,7 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 
 	adj, _ := s.g.AdjacencyMap()
 
-	// Vizinhos pré-ordenados → expansão determinística.
+	// Vizinhos pré-ordenados, expansão determinística.
 	sortedNeighbours := make(map[string][]string, len(adj))
 	for v, ns := range adj {
 		ss := make([]string, 0, len(ns))

@@ -23,7 +23,7 @@ func main() {
 		log.Fatalf("erro ao processar o JSON de filmes: %v", err)
 	}
 
-	svc := service.New(movies)
+	svc := service.Seed(movies)
 	log.Printf("grafo construído — %d filmes, %d atores únicos", len(movies), len(svc.Actors()))
 
 	srv := server.New(svc)
