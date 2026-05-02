@@ -85,11 +85,14 @@ type pathItem struct {
 }
 
 type pathsResponse struct {
-	Paths   []pathItem `json:"paths"`
-	Count   int        `json:"count"`
-	Length  int        `json:"length,omitempty"`
-	Found   bool       `json:"found"`
-	Message string     `json:"message,omitempty"`
+	Paths     []pathItem `json:"paths"`
+	Count     int        `json:"count"`
+	MinLength int        `json:"minLength,omitempty"`
+	MaxLength int        `json:"maxLength,omitempty"`
+	Truncated bool       `json:"truncated,omitempty"`
+	Cap       int        `json:"cap,omitempty"`
+	Found     bool       `json:"found"`
+	Message   string     `json:"message,omitempty"`
 }
 
 func (s *Server) handleBFS(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +144,7 @@ func (s *Server) handleBFS8(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	paths, err := s.svc.AllShortestPaths(from, to, maxLen)
+	paths, truncated, err := s.svc.AllPathsUpTo(from, to, maxLen)
 	if errors.Is(err, service.ErrVertexNotFound) {
 		writeJSON(w, http.StatusNotFound, pathsResponse{
 			Paths: []pathItem{}, Found: false, Message: "ator não encontrado",
@@ -160,12 +163,18 @@ func (s *Server) handleBFS8(w http.ResponseWriter, r *http.Request) {
 	for i, p := range paths {
 		items[i] = pathItem{Path: p, Length: len(p) - 1}
 	}
-	writeJSON(w, http.StatusOK, pathsResponse{
-		Paths:  items,
-		Count:  len(items),
-		Length: len(paths[0]) - 1,
-		Found:  true,
-	})
+	resp := pathsResponse{
+		Paths:     items,
+		Count:     len(items),
+		MinLength: len(paths[0]) - 1,
+		MaxLength: len(paths[len(paths)-1]) - 1,
+		Truncated: truncated,
+		Found:     true,
+	}
+	if truncated {
+		resp.Cap = service.MaxPathsCap
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func readEndpoints(w http.ResponseWriter, r *http.Request) (string, string, bool) {

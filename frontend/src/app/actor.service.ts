@@ -22,7 +22,10 @@ export interface PathItem {
 export interface Bfs8Response {
   paths: PathItem[];
   count: number;
-  length?: number;
+  minLength?: number;
+  maxLength?: number;
+  truncated?: boolean;
+  cap?: number;
   found: boolean;
   message?: string;
 }

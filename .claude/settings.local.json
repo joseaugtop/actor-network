@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ng version *)",
       "Bash(ng new *)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(go build *)"
     ]
   }
 }

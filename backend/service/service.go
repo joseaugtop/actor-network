@@ -112,77 +112,97 @@ func reconstruct(parent map[string]string, from, to string) []string {
 	}
 }
 
-// AllShortestPaths returns every shortest path between from and to,
-// but only when its length (in edges) is <= maxLen.
-// Built on top of a BFS that records every predecessor at the same
-// minimum distance, then walks the predecessor DAG to enumerate paths.
-func (s *Service) AllShortestPaths(from, to string, maxLen int) ([][]string, error) {
+// MaxPathsCap caps the number of paths returned by AllPathsUpTo so
+// the response stays within a size the browser can render.
+const MaxPathsCap = 10000
+
+// AllPathsUpTo enumerates every simple path (no repeated vertices) from
+// `from` to `to` with edge count <= maxLen. Uses iterative deepening so
+// shorter paths are always discovered before longer ones — if the cap
+// kicks in at depth k, every path of length < k is guaranteed complete.
+// Returns paths sorted by length ascending, then lexicographically.
+func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, error) {
 	if !s.HasVertex(from) || !s.HasVertex(to) {
-		return nil, ErrVertexNotFound
+		return nil, false, ErrVertexNotFound
 	}
 	if from == to {
-		return [][]string{{from}}, nil
+		return [][]string{{from}}, false, nil
 	}
 
 	adj, _ := s.g.AdjacencyMap()
 
-	dist := map[string]int{from: 0}
-	parents := map[string][]string{}
-	queue := []string{from}
-	target := -1
+	// Pre-sort neighbours once so DFS expansion is deterministic and
+	// the final result is already mostly ordered.
+	sortedNeighbours := make(map[string][]string, len(adj))
+	for v, ns := range adj {
+		ss := make([]string, 0, len(ns))
+		for n := range ns {
+			ss = append(ss, n)
+		}
+		sort.Strings(ss)
+		sortedNeighbours[v] = ss
+	}
 
-	for len(queue) > 0 {
-		v := queue[0]
-		queue = queue[1:]
-		d := dist[v]
-		if target != -1 && d >= target {
-			continue
+	var paths [][]string
+	truncated := false
+	visited := map[string]bool{from: true}
+	path := []string{from}
+
+	// dfs collects simple paths from `node` to `to` of length exactly
+	// `remaining` more edges. `remaining > 0` is the loop invariant.
+	var dfs func(node string, remaining int)
+	dfs = func(node string, remaining int) {
+		if truncated {
+			return
 		}
-		if d >= maxLen {
-			continue
-		}
-		for n := range adj[v] {
-			nd, seen := dist[n]
-			if !seen {
-				dist[n] = d + 1
-				parents[n] = []string{v}
+		for _, n := range sortedNeighbours[node] {
+			if visited[n] {
+				continue
+			}
+			if remaining == 1 {
 				if n == to {
-					target = d + 1
+					cp := make([]string, len(path)+1)
+					copy(cp, path)
+					cp[len(path)] = n
+					paths = append(paths, cp)
+					if len(paths) >= MaxPathsCap {
+						truncated = true
+						return
+					}
 				}
-				queue = append(queue, n)
-			} else if nd == d+1 {
-				parents[n] = append(parents[n], v)
+				continue
+			}
+			if n == to {
+				// `to` only counts when we've used exactly `remaining`
+				// edges; landing on it earlier would mean a shorter path,
+				// which a previous iteration already collected.
+				continue
+			}
+			visited[n] = true
+			path = append(path, n)
+			dfs(n, remaining-1)
+			path = path[:len(path)-1]
+			delete(visited, n)
+			if truncated {
+				return
 			}
 		}
 	}
 
-	if target == -1 {
-		return nil, nil
+	for d := 1; d <= maxLen && !truncated; d++ {
+		dfs(from, d)
 	}
-
-	var paths [][]string
-	var build func(node string, suffix []string)
-	build = func(node string, suffix []string) {
-		path := append([]string{node}, suffix...)
-		if node == from {
-			cp := make([]string, len(path))
-			copy(cp, path)
-			paths = append(paths, cp)
-			return
-		}
-		for _, p := range parents[node] {
-			build(p, path)
-		}
-	}
-	build(to, nil)
 
 	sort.Slice(paths, func(i, j int) bool {
-		for k := 0; k < len(paths[i]) && k < len(paths[j]); k++ {
+		if len(paths[i]) != len(paths[j]) {
+			return len(paths[i]) < len(paths[j])
+		}
+		for k := 0; k < len(paths[i]); k++ {
 			if paths[i][k] != paths[j][k] {
 				return paths[i][k] < paths[j][k]
 			}
 		}
 		return false
 	})
-	return paths, nil
+	return paths, truncated, nil
 }
