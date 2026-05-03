@@ -135,15 +135,15 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 
 	adj, _ := s.g.AdjacencyMap()
 
-	// Vizinhos pré-ordenados, expansão determinística.
+	// Converte os vizinhos de map para slice para poder ordenar (maps em Go não têm ordem garantida).
 	sortedNeighbours := make(map[string][]string, len(adj))
-	for v, ns := range adj {
-		ss := make([]string, 0, len(ns))
-		for n := range ns {
-			ss = append(ss, n)
+	for vertex, neighboursMap := range adj {
+		neighbours := make([]string, 0, len(neighboursMap))
+		for neighbour := range neighboursMap {
+			neighbours = append(neighbours, neighbour)
 		}
-		sort.Strings(ss)
-		sortedNeighbours[v] = ss
+		sort.Strings(neighbours)
+		sortedNeighbours[vertex] = neighbours
 	}
 
 	var paths [][]string
@@ -190,10 +190,12 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 		}
 	}
 
+	//Executa dfs cada vez com um limite de arestas difente (d)
 	for d := 1; d <= maxLen && !truncated; d++ {
 		dfs(from, d)
 	}
 
+	//Ordena caminhos encontrados
 	sort.Slice(paths, func(i, j int) bool {
 		if len(paths[i]) != len(paths[j]) {
 			return len(paths[i]) < len(paths[j])
