@@ -1,293 +1,341 @@
 @let actorList = actors();
 
-<div class="mx-auto flex max-w-5xl flex-col gap-5 px-5 pb-16 pt-8">
-  <!-- Hero -->
-  <header class="px-4 pb-2 pt-7 text-center">
-    <h1 class="text-4xl font-extrabold leading-tight md:text-5xl">
-      <span class="mr-2">🎬</span>
-      <span
-        class="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent"
-      >
-        8 Graus de Network
-      </span>
-    </h1>
-    <p class="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-slate-400">
-      Encontre o relacionamento mais próximo entre dois atores através dos
-      filmes em comum, usando uma busca em largura (BFS) sobre um grafo de
-      Atores e Filmes.
-    </p>
+<div class="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-10">
+
+  <!-- Top bar -->
+  <nav class="mb-10 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl" style="background: linear-gradient(135deg, #2c2c54, #1a1a2e);">
+        <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3L9 4H7l2 4H6L4 4H2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v11a1 1 0 0 0 1 1h20a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1V5a1 1 0 0 0-1-1h-4z"/>
+        </svg>
+      </div>
+      <span class="text-lg font-bold tracking-tight text-gray-800">8 Graus de Network</span>
+    </div>
     @if (!loadingActors() && !loadError()) {
-      <span
-        class="mt-3 inline-block rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300"
-      >
-        {{ actorsCount() }} atores carregados
+      <span class="stat-badge">
+        <span class="h-2 w-2 rounded-full bg-green-500"></span>
+        <span class="text-xs font-semibold text-yellow-800">{{ actorsCount() }} atores</span>
       </span>
     }
-  </header>
+  </nav>
 
-  <!-- Status / erro de carregamento -->
+  <!-- Loading atores -->
   @if (loadingActors()) {
-    <div
-      class="rounded-2xl border border-white/10 bg-white/5 p-5 text-center font-medium shadow-2xl backdrop-blur"
-    >
-      Carregando atores…
+    <div class="card mx-auto flex w-full max-w-2xl items-center justify-center gap-3 py-12">
+      <span class="spinner text-yellow-500"></span>
+      <span class="text-sm font-medium text-gray-500">Carregando base de atores…</span>
     </div>
   }
 
+  <!-- Erro carregamento -->
   @if (loadError()) {
-    <div
-      class="rounded-2xl border border-red-400/30 bg-white/5 p-5 text-center font-medium text-red-400 shadow-2xl backdrop-blur"
-    >
-      {{ loadError() }}
+    <div class="card mx-auto w-full max-w-2xl border-l-4 border-red-500 bg-red-50 p-6">
+      <div class="flex items-start gap-3">
+        <svg class="mt-0.5 h-5 w-5 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div>
+          <h3 class="text-sm font-bold text-red-700">Falha na conexão</h3>
+          <p class="mt-1 text-sm leading-relaxed text-red-600">{{ loadError() }}</p>
+        </div>
+      </div>
     </div>
   }
 
-  <!-- Formulário -->
+  <!-- Main content -->
   @if (!loadingActors() && !loadError()) {
-    <section
-      class="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur"
-    >
-      <datalist id="actor-options">
-        @for (a of actorList; track a) {
-          <option [value]="a"></option>
-        }
-      </datalist>
+    <div class="mx-auto w-full max-w-3xl">
 
-      <div
-        class="grid items-end gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4"
-      >
-        <label class="flex flex-col gap-1.5">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400"
-          >
-            Ator de Origem
-          </span>
-          <input
-            type="text"
-            list="actor-options"
-            placeholder="Ex: Tom Hanks"
-            autocomplete="off"
-            [ngModel]="from()"
-            (ngModelChange)="from.set($event)"
-            class="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-          />
-        </label>
-
-        <button
-          type="button"
-          (click)="swap()"
-          aria-label="Inverter origem e destino"
-          title="Inverter origem e destino"
-          class="mx-auto h-11 w-11 rotate-90 cursor-pointer rounded-full border border-white/10 bg-white/5 text-lg text-slate-100 transition duration-300 hover:rotate-[270deg] hover:bg-cyan-400/15 md:rotate-0 md:hover:rotate-180"
-        >
-          ⇄
-        </button>
-
-        <label class="flex flex-col gap-1.5">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400"
-          >
-            Ator de Destino
-          </span>
-          <input
-            type="text"
-            list="actor-options"
-            placeholder="Ex: Zendaya"
-            autocomplete="off"
-            [ngModel]="to()"
-            (ngModelChange)="to.set($event)"
-            class="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-          />
-        </label>
+      <!-- Hero section -->
+      <div class="mb-8 text-center">
+        <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 md:text-5xl">
+          Descubra a
+          <span class="bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent"> Conexão </span>
+          entre Atores
+        </h1>
+        <p class="mx-auto mt-3 max-w-xl text-base leading-relaxed text-gray-500">
+          Digite dois atores e descubra quantos filmes os separam. O algoritmo BFS encontra o caminho mais curto no grafo de relações.
+        </p>
       </div>
 
-      <div class="mt-5 flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          [disabled]="!canSearch()"
-          (click)="runBfs()"
-          class="cursor-pointer rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-500 px-6 py-3 text-base font-semibold text-slate-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-        >
-          🔎 BFS · Caminho mais curto
-        </button>
+      <!-- Search form -->
+      <div class="card overflow-hidden">
+        <!-- Accent line -->
+        <div class="h-1 w-full" style="background: linear-gradient(90deg, #d4a853, #2c2c54, #d4a853);"></div>
 
-        <button
-          type="button"
-          [disabled]="!canSearch()"
-          (click)="runBfs8()"
-          class="cursor-pointer rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-        >
-          🌐 BFS · Comprimento máximo 8
-        </button>
-      </div>
-    </section>
-  }
+        <div class="p-6 md:p-8">
+          <datalist id="actor-options">
+            @for (a of actorList; track a) {
+              <option [value]="a"></option>
+            }
+          </datalist>
 
-  <!-- Buscando -->
-  @if (searching()) {
-    <div
-      class="rounded-2xl border border-white/10 bg-white/5 p-5 text-center font-medium shadow-2xl backdrop-blur"
-    >
-      Buscando…
-    </div>
-  }
+          <!-- Input fields -->
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:gap-3">
+            <!-- From -->
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
+                A
+              </label>
+              <input
+                type="text"
+                list="actor-options"
+                placeholder="Nome do primeiro ator"
+                autocomplete="off"
+                [ngModel]="from()"
+                (ngModelChange)="from.set($event)"
+                class="input-cinema"
+              />
+            </div>
 
-  <!-- Erro -->
-  @if (errorMessage()) {
-    <div
-      class="rounded-2xl border border-red-400/30 bg-white/5 p-5 text-center font-medium text-red-400 shadow-2xl backdrop-blur"
-    >
-      {{ errorMessage() }}
-    </div>
-  }
-
-  <!-- Resultado BFS -->
-  @if (mode() === 'bfs' && bfsResult(); as res) {
-    <section
-      class="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur"
-    >
-      <h2 class="mb-3 text-xl font-bold text-cyan-400">Resultado · BFS</h2>
-
-      @if (!res.found) {
-        <p class="py-5 text-center font-medium text-red-400">
-          ❌
-          {{
-            res.message ??
-              'Nenhum relacionamento encontrado entre os atores informados.'
-          }}
-        </p>
-      } @else {
-        <p class="my-1 mb-4 text-slate-400">
-          Comprimento do caminho:
-          <strong class="text-lg text-slate-100">{{ res.length }}</strong>
-          arestas
-          <span class="ml-1 text-xs opacity-70"
-            >({{ res.path.length }} vértices)</span
-          >
-        </p>
-
-        <ol class="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-3 p-0">
-          @for (node of res.path; track node + $index) {
-            <li
-              class="relative flex min-w-[120px] flex-col rounded-xl border bg-slate-900/50 px-3.5 py-2.5"
-              [class.border-cyan-400/40]="!isMovieNode(node, $index)"
-              [class.border-amber-400/40]="isMovieNode(node, $index)"
+            <!-- Swap button -->
+            <button
+              type="button"
+              (click)="swap()"
+              aria-label="Inverter origem e destino"
+              title="Inverter"
+              class="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-400 transition-all duration-200 hover:border-yellow-400 hover:bg-yellow-50 hover:text-yellow-600 md:mx-1"
             >
-              @if ($index < res.path.length - 1) {
-                <span
-                  class="absolute -right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400"
-                  >→</span
-                >
-              }
-              <span
-                class="text-[11px] font-semibold uppercase tracking-wider opacity-80"
-                [class.text-cyan-400]="!isMovieNode(node, $index)"
-                [class.text-amber-400]="isMovieNode(node, $index)"
-              >
-                {{ isMovieNode(node, $index) ? '🎞️ Filme' : '🎭 Ator' }}
-              </span>
-              <span class="text-sm font-semibold text-slate-100">{{ node }}</span>
-            </li>
-          }
-        </ol>
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+            </button>
+
+            <!-- To -->
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
+                B
+              </label>
+              <input
+                type="text"
+                list="actor-options"
+                placeholder="Nome do segundo ator"
+                autocomplete="off"
+                [ngModel]="to()"
+                (ngModelChange)="to.set($event)"
+                class="input-cinema"
+              />
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              [disabled]="!canSearch()"
+              (click)="runBfs()"
+              class="btn-primary"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Caminho Mais Curto
+            </button>
+
+            <button
+              type="button"
+              [disabled]="!canSearch()"
+              (click)="runBfs8()"
+              class="btn-accent"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Todos os Caminhos (até 8)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Searching indicator -->
+      @if (searching()) {
+        <div class="card mt-6 flex items-center justify-center gap-3 py-10">
+          <span class="spinner text-yellow-500"></span>
+          <span class="text-sm font-medium text-gray-500">Buscando caminho no grafo…</span>
+        </div>
       }
-    </section>
-  }
 
-  <!-- Resultado BFS 8 -->
-  @if (mode() === 'bfs8' && bfs8Result(); as res) {
-    <section
-      class="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur"
-    >
-      <h2 class="mb-3 text-xl font-bold text-cyan-400">
-        Resultado · BFS Comprimento Máximo 8
-      </h2>
+      <!-- Error message -->
+      @if (errorMessage()) {
+        <div class="card mt-6 border-l-4 border-red-500 bg-red-50 p-5">
+          <div class="flex items-center gap-3">
+            <svg class="h-5 w-5 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p class="text-sm font-medium text-red-700">{{ errorMessage() }}</p>
+          </div>
+        </div>
+      }
 
-      @if (!res.found) {
-        <p class="py-5 text-center font-medium text-red-400">
-          ❌
-          {{
-            res.message ??
-              'Nenhum relacionamento encontrado dentro do comprimento máximo.'
-          }}
-        </p>
-      } @else {
-        <p class="my-1 mb-4 text-slate-400">
-          <strong class="text-lg text-slate-100">{{ res.count }}</strong>
-          caminho(s) encontrado(s)
-          @if (res.minLength === res.maxLength) {
-            com comprimento
-            <strong class="text-lg text-slate-100">{{ res.minLength }}</strong>
-            arestas.
+      <!-- BFS Result -->
+      @if (mode() === 'bfs' && bfsResult(); as res) {
+        <div class="mt-6 animate-fade-slide-up">
+          @if (!res.found) {
+            <div class="card border-l-4 border-red-400 bg-red-50 p-6">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                  <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-red-700">Sem conexão</h3>
+                  <p class="mt-0.5 text-sm text-red-600">{{ res.message ?? 'Nenhum relacionamento encontrado entre os atores informados.' }}</p>
+                </div>
+              </div>
+            </div>
           } @else {
-            com comprimento entre
-            <strong class="text-lg text-slate-100">{{ res.minLength }}</strong>
-            e
-            <strong class="text-lg text-slate-100">{{ res.maxLength }}</strong>
-            arestas.
-          }
-        </p>
-        @if (res.truncated) {
-          <p class="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            ⚠️ Resultado truncado: existem mais caminhos do que o limite de
-            <strong>{{ res.cap }}</strong> exibidos. Os caminhos mais curtos
-            estão garantidos no início da lista.
-          </p>
-        }
+            <!-- Result header -->
+            <div class="card mb-4 overflow-hidden">
+              <div class="h-1 w-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+              <div class="flex flex-wrap items-center justify-between gap-3 p-5">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-bold text-gray-800">Caminho Encontrado</h3>
+                    <p class="text-xs text-gray-400">BFS — menor distância no grafo</p>
+                  </div>
+                </div>
+                <div class="flex gap-4">
+                  <div class="text-center">
+                    <span class="block text-2xl font-extrabold text-gray-800">{{ res.length }}</span>
+                    <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Arestas</span>
+                  </div>
+                  <div class="text-center">
+                    <span class="block text-2xl font-extrabold text-gray-800">{{ res.path.length }}</span>
+                    <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Vértices</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        <div
-          class="flex max-h-[70vh] flex-col gap-3.5 overflow-y-auto pr-1"
-        >
-          @for (
-            item of res.paths;
-            track trackPath($index, item);
-            let i = $index
-          ) {
-            <article
-              class="rounded-xl border border-white/10 bg-slate-900/40 p-3.5"
-            >
-              <header class="mb-2.5 flex items-center justify-between">
-                <span class="font-bold text-violet-400">#{{ i + 1 }}</span>
-                <span class="text-xs text-slate-400"
-                  >{{ item.length }} arestas</span
-                >
-              </header>
-              <ol
-                class="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-3 p-0"
-              >
-                @for (node of item.path; track node + $index) {
-                  <li
-                    class="relative flex min-w-[120px] flex-col rounded-xl border bg-slate-900/50 px-3.5 py-2.5"
-                    [class.border-cyan-400/40]="!isMovieNode(node, $index)"
-                    [class.border-amber-400/40]="isMovieNode(node, $index)"
-                  >
-                    @if ($index < item.path.length - 1) {
-                      <span
-                        class="absolute -right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400"
-                        >→</span
-                      >
-                    }
-                    <span
-                      class="text-[11px] font-semibold uppercase tracking-wider opacity-80"
-                      [class.text-cyan-400]="!isMovieNode(node, $index)"
-                      [class.text-amber-400]="isMovieNode(node, $index)"
-                    >
-                      {{ isMovieNode(node, $index) ? '🎞️' : '🎭' }}
+            <!-- Path visualization -->
+            <div class="card p-5 md:p-6">
+              <div class="flex flex-wrap items-center gap-2">
+                @for (node of res.path; track node + $index) {
+                  @if ($index > 0) {
+                    <span class="connector">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                      </svg>
                     </span>
-                    <span class="text-sm font-semibold text-slate-100">{{
-                      node
-                    }}</span>
-                  </li>
+                  }
+                  <div [class]="isMovieNode(node, $index) ? 'badge-movie' : 'badge-actor'">
+                    <span class="text-xs">
+                      {{ isMovieNode(node, $index) ? '🎬' : '👤' }}
+                    </span>
+                    <span class="text-sm font-semibold text-gray-800">{{ node }}</span>
+                  </div>
                 }
-              </ol>
-            </article>
+              </div>
+            </div>
           }
         </div>
       }
-    </section>
+
+      <!-- BFS8 Result -->
+      @if (mode() === 'bfs8' && bfs8Result(); as res) {
+        <div class="mt-6 animate-fade-slide-up">
+          @if (!res.found) {
+            <div class="card border-l-4 border-red-400 bg-red-50 p-6">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                  <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-red-700">Sem conexão</h3>
+                  <p class="mt-0.5 text-sm text-red-600">{{ res.message ?? 'Nenhum relacionamento encontrado dentro do comprimento máximo.' }}</p>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <!-- Result header -->
+            <div class="card mb-4 overflow-hidden">
+              <div class="h-1 w-full" style="background: linear-gradient(90deg, #d4a853, #c4944a);"></div>
+              <div class="flex flex-wrap items-center justify-between gap-3 p-5">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
+                    <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-bold text-gray-800">{{ res.count }} Caminho(s) Encontrado(s)</h3>
+                    <p class="text-xs text-gray-400">
+                      @if (res.minLength === res.maxLength) {
+                        Todos com {{ res.minLength }} arestas
+                      } @else {
+                        Entre {{ res.minLength }} e {{ res.maxLength }} arestas
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Truncated warning -->
+            @if (res.truncated) {
+              <div class="mb-4 flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3">
+                <svg class="h-5 w-5 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <p class="text-sm font-medium text-amber-700">
+                  Resultado truncado: limite de <strong>{{ res.cap }}</strong> caminhos. Os mais curtos aparecem primeiro.
+                </p>
+              </div>
+            }
+
+            <!-- Paths list -->
+            <div class="flex max-h-[65vh] flex-col gap-3 overflow-y-auto pr-1">
+              @for (item of res.paths; track trackPath($index, item); let i = $index) {
+                <div class="path-card">
+                  <!-- Path header -->
+                  <div class="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
+                      <span class="flex h-5 w-5 items-center justify-center rounded-md bg-gray-200 text-[10px] font-extrabold text-gray-500">{{ i + 1 }}</span>
+                      Caminho {{ i + 1 }}
+                    </span>
+                    <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-500">{{ item.length }} arestas</span>
+                  </div>
+                  <!-- Path nodes -->
+                  <div class="flex flex-wrap items-center gap-2">
+                    @for (node of item.path; track node + $index) {
+                      @if ($index > 0) {
+                        <span class="connector">
+                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                          </svg>
+                        </span>
+                      }
+                      <div [class]="isMovieNode(node, $index) ? 'badge-movie' : 'badge-actor'">
+                        <span class="text-xs">{{ isMovieNode(node, $index) ? '🎬' : '👤' }}</span>
+                        <span class="text-xs font-semibold text-gray-800 sm:text-sm">{{ node }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+    </div>
   }
 
-  <footer class="mt-5 text-center text-xs text-slate-400">
-    <span>UNESC · Teoria de Grafos · TD 01</span>
+  <!-- Footer -->
+  <footer class="mt-auto pt-12 text-center">
+    <div class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2">
+      <span class="text-xs font-medium text-gray-400">UNESC · Teoria de Grafos · TD 01</span>
+    </div>
   </footer>
+
 </div>
