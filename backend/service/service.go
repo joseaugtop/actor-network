@@ -3,6 +3,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/dominikbraun/graph"
@@ -12,27 +13,50 @@ import (
 
 var ErrVertexNotFound = errors.New("vértice não encontrado")
 
+// vertexLabel gera um rótulo único para o vértice usando o ID do filme.
+// Ex: "Dune (841)" vs "Dune (438631)"
+func vertexLabel(m model.Movie) string {
+	return fmt.Sprintf("%s (%d)", m.Title, m.Id)
+}
+
+// cleanLabel remove o sufixo "(ID)" para exibição no frontend.
+func cleanLabel(v string) string {
+	n := len(v)
+	if n < 3 || v[n-1] != ')' {
+		return v
+	}
+	i := n - 2
+	for i > 0 && v[i] != '(' {
+		i--
+	}
+	if i <= 0 || v[i] != '(' || v[i-1] != ' ' {
+		return v
+	}
+	return v[:i-1]
+}
+
 // --- Grafo ------------------------------------------------------------------
 
 type Service struct {
 	g      graph.Graph[string, string]
 	actors map[string]bool
-	movies map[string]bool
+	movies map[string]string // key: label interno (com ID), value: título limpo
 }
 
 // Seed carrega os filmes no grafo, criando vértices e arestas.
 func Seed(movies []model.Movie) *Service {
 	g := graph.New(graph.StringHash)
 	actors := map[string]bool{}
-	titles := map[string]bool{}
+	titles := map[string]string{} // label interno -> título limpo
 
 	for _, m := range movies {
-		titles[m.Title] = true
-		_ = g.AddVertex(m.Title)
+		label := vertexLabel(m)
+		titles[label] = m.Title
+		_ = g.AddVertex(label)
 		for _, a := range m.Cast {
 			actors[a] = true
 			_ = g.AddVertex(a)
-			_ = g.AddEdge(m.Title, a)
+			_ = g.AddEdge(label, a)
 		}
 	}
 	return &Service{g: g, actors: actors, movies: titles}
@@ -71,6 +95,7 @@ func (s *Service) AdjacencyMap() map[string][]string {
 // --- BFS: caminho mínimo ----------------------------------------------------
 
 // Retorna o menor caminho entre from e to, ou nil se não existir.
+// Os nós de filme no caminho são retornados com o título limpo (sem ID).
 func (s *Service) ShortestPath(from, to string) ([]string, error) {
 	if !s.HasVertex(from) || !s.HasVertex(to) {
 		return nil, ErrVertexNotFound
@@ -81,8 +106,6 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 
 	adj, _ := s.g.AdjacencyMap()
 
-	// parent guarda de onde cada vértice foi alcançado e também
-	// faz o papel de "visitados".
 	parent := map[string]string{from: ""}
 	queue := []string{from}
 
@@ -96,7 +119,7 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 			}
 			parent[n] = v
 			if n == to {
-				return reconstruct(parent, from, to), nil
+				return s.reconstructWithCleanLabels(parent, from, to), nil
 			}
 			queue = append(queue, n)
 		}
@@ -104,17 +127,25 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 	return nil, nil
 }
 
-// reconstrói o caminho do destino até a origem usando o mapa parent, invertendo para a ordem correta.
-func reconstruct(parent map[string]string, from, to string) []string {
+// reconstructWithCleanLabels reconstrói o caminho limpando os rótulos de filme.
+func (s *Service) reconstructWithCleanLabels(parent map[string]string, from, to string) []string {
 	var path []string
 	cur := to
 	for {
-		path = append([]string{cur}, path...)
+		path = append([]string{s.cleanNodeLabel(cur)}, path...)
 		if cur == from {
 			return path
 		}
 		cur = parent[cur]
 	}
+}
+
+// cleanNodeLabel retorna o título limpo se for filme, ou o nome original se for ator.
+func (s *Service) cleanNodeLabel(v string) string {
+	if _, ok := s.movies[v]; ok {
+		return s.movies[v]
+	}
+	return v
 }
 
 // --- DFS: todos os caminhos até maxLen --------------------------------------
@@ -123,8 +154,7 @@ func reconstruct(parent map[string]string, from, to string) []string {
 const MaxPathsCap = 10000
 
 // Enumera todo caminho simples de from até to com até maxLen arestas.
-// Faz aprofundamento iterativo (d = 1..maxLen), então caminhos menores
-// vêm primeiro e a truncagem só corta os mais longos.
+// Os nós de filme nos caminhos são retornados com o título limpo (sem ID).
 func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, error) {
 	if !s.HasVertex(from) || !s.HasVertex(to) {
 		return nil, false, ErrVertexNotFound
@@ -135,7 +165,6 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 
 	adj, _ := s.g.AdjacencyMap()
 
-	// Converte os vizinhos de map para slice para poder ordenar (maps em Go não têm ordem garantida).
 	sortedNeighbours := make(map[string][]string, len(adj))
 	for vertex, neighboursMap := range adj {
 		neighbours := make([]string, 0, len(neighboursMap))
@@ -151,7 +180,6 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 	visited := map[string]bool{from: true}
 	path := []string{from}
 
-	// dfs busca caminhos com exatamente `remaining` arestas restantes.
 	var dfs func(node string, remaining int)
 	dfs = func(node string, remaining int) {
 		if truncated {
@@ -175,8 +203,6 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 				continue
 			}
 			if n == to {
-				// chegar em `to` antes da última aresta = caminho
-				// mais curto, já pego em iteração anterior.
 				continue
 			}
 			visited[n] = true
@@ -190,12 +216,11 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 		}
 	}
 
-	//Executa dfs cada vez com um limite de arestas difente (d)
 	for d := 1; d <= maxLen && !truncated; d++ {
 		dfs(from, d)
 	}
 
-	//Ordena caminhos encontrados
+	// Ordena caminhos encontrados
 	sort.Slice(paths, func(i, j int) bool {
 		if len(paths[i]) != len(paths[j]) {
 			return len(paths[i]) < len(paths[j])
@@ -207,5 +232,15 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 		}
 		return false
 	})
-	return paths, truncated, nil
+
+	// Limpa os rótulos dos filmes nos resultados
+	cleaned := make([][]string, len(paths))
+	for i, p := range paths {
+		cleaned[i] = make([]string, len(p))
+		for j, node := range p {
+			cleaned[i][j] = s.cleanNodeLabel(node)
+		}
+	}
+
+	return cleaned, truncated, nil
 }
