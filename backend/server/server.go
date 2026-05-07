@@ -22,9 +22,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/show", s.handleShow)
 	mux.HandleFunc("/bfs", s.handleBFS)
 	mux.HandleFunc("/bfs8", s.handleBFS8)
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "mensagem": "servidor ativo"})
-	})
 	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("docs"))))
 	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)

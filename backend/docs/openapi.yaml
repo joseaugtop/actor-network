@@ -20,29 +20,12 @@ servers:
     description: Servidor local de desenvolvimento
 
 tags:
-  - name: Health
-    description: Verificação de status do servidor
   - name: Atores
     description: Consultas sobre atores e estrutura do grafo
   - name: Caminhos
     description: Buscas de caminhos entre atores
 
 paths:
-  /health:
-    get:
-      tags: [Health]
-      summary: Verifica se o servidor está ativo
-      responses:
-        "200":
-          description: Servidor ativo
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
-              example:
-                status: ok
-                mensagem: servidor ativo
-
   /actors:
     get:
       tags: [Atores]
@@ -257,17 +240,6 @@ components:
             error: "método não permitido"
 
   schemas:
-    HealthResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: ok
-        mensagem:
-          type: string
-          example: servidor ativo
-      required: [status, mensagem]
-
     ActorsResponse:
       type: object
       properties:

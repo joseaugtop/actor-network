@@ -106,6 +106,8 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 
 	adj, _ := s.g.AdjacencyMap()
 
+	// parent guarda de onde cada vértice foi alcançado e também
+	// faz o papel de "visitados".
 	parent := map[string]string{from: ""}
 	queue := []string{from}
 
@@ -119,7 +121,7 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 			}
 			parent[n] = v
 			if n == to {
-				return s.reconstructWithCleanLabels(parent, from, to), nil
+				return s.reconstructPath(parent, from, to), nil
 			}
 			queue = append(queue, n)
 		}
@@ -127,8 +129,8 @@ func (s *Service) ShortestPath(from, to string) ([]string, error) {
 	return nil, nil
 }
 
-// reconstructWithCleanLabels reconstrói o caminho limpando os rótulos de filme.
-func (s *Service) reconstructWithCleanLabels(parent map[string]string, from, to string) []string {
+// reconstrói o caminho andando o parent de trás para frente.
+func (s *Service) reconstructPath(parent map[string]string, from, to string) []string {
 	var path []string
 	cur := to
 	for {
@@ -153,7 +155,7 @@ func (s *Service) cleanNodeLabel(v string) string {
 // Limite para a resposta não estourar o que o navegador renderiza.
 const MaxPathsCap = 10000
 
-// Enumera todo caminho simples de from até to com até maxLen arestas.
+// Enumera todo caminho simples de 'from' até 'to' com até maxLen arestas.
 // Os nós de filme nos caminhos são retornados com o título limpo (sem ID).
 func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, error) {
 	if !s.HasVertex(from) || !s.HasVertex(to) {
@@ -165,6 +167,7 @@ func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, e
 
 	adj, _ := s.g.AdjacencyMap()
 
+	// pré-converte e ordena vizinhos para não repetir isso a cada chamada do DFS.
 	sortedNeighbours := make(map[string][]string, len(adj))
 	for vertex, neighboursMap := range adj {
 		neighbours := make([]string, 0, len(neighboursMap))
