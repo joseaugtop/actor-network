@@ -1,0 +1,366 @@
+openapi: 3.0.3
+info:
+  title: 8 Graus de Network — API
+  description: |
+    API do trabalho **8 Graus de Network** (TD 01 — Teoria de Grafos / UNESC).
+
+    Os dados são carregados a partir de `latest_movies.json` e estruturados em um
+    grafo não-direcionado (lista de adjacências), onde **atores** e **filmes** são
+    vértices e a participação de um ator em um filme é uma aresta.
+
+    A API expõe consultas sobre o grafo:
+    - listagem de atores e adjacências;
+    - menor caminho entre dois atores (BFS);
+    - todos os caminhos simples até um comprimento máximo (DFS limitado).
+  version: "1.0.0"
+  contact:
+    name: 8 Graus de Network
+servers:
+  - url: http://localhost:8081
+    description: Servidor local de desenvolvimento
+
+tags:
+  - name: Health
+    description: Verificação de status do servidor
+  - name: Atores
+    description: Consultas sobre atores e estrutura do grafo
+  - name: Caminhos
+    description: Buscas de caminhos entre atores
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Verifica se o servidor está ativo
+      responses:
+        "200":
+          description: Servidor ativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                mensagem: servidor ativo
+
+  /actors:
+    get:
+      tags: [Atores]
+      summary: Lista todos os atores carregados
+      description: Retorna a lista ordenada (alfabética) dos atores únicos do grafo.
+      responses:
+        "200":
+          description: Lista de atores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActorsResponse"
+              example:
+                count: 3
+                actors:
+                  - "Cillian Murphy"
+                  - "Florence Pugh"
+                  - "Robert Downey Jr."
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /show:
+    get:
+      tags: [Atores]
+      summary: Exibe a lista de adjacências do grafo
+      description: |
+        Retorna o mapa completo de adjacências do grafo. Cada chave é um vértice
+        (ator ou filme) e o valor é a lista ordenada de seus vizinhos.
+      responses:
+        "200":
+          description: Mapa de adjacências
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdjacencyResponse"
+              example:
+                count: 4
+                adjacency:
+                  "Oppenheimer (872585)":
+                    - "Cillian Murphy"
+                    - "Florence Pugh"
+                  "Cillian Murphy":
+                    - "Oppenheimer (872585)"
+                  "Florence Pugh":
+                    - "Oppenheimer (872585)"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /bfs:
+    get:
+      tags: [Caminhos]
+      summary: Caminho mínimo entre dois atores (BFS)
+      description: |
+        Calcula via **Busca em Largura (BFS)** o menor caminho entre os atores
+        `from` e `to`. Os nós de filme retornados aparecem com o título limpo
+        (sem o ID interno).
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: |
+            Caminho encontrado (`found: true`) ou ausência de relacionamento
+            (`found: false`, `length: -1`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PathResponse"
+              examples:
+                encontrado:
+                  summary: Caminho encontrado
+                  value:
+                    path:
+                      - "Cillian Murphy"
+                      - "Oppenheimer"
+                      - "Florence Pugh"
+                    length: 2
+                    found: true
+                semRelacionamento:
+                  summary: Sem relacionamento
+                  value:
+                    path: []
+                    length: -1
+                    found: false
+                    message: "nenhum relacionamento encontrado"
+        "400":
+          $ref: "#/components/responses/MissingParams"
+        "404":
+          description: Ator não encontrado no grafo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PathResponse"
+              example:
+                path: []
+                length: -1
+                found: false
+                message: "ator não encontrado"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /bfs8:
+    get:
+      tags: [Caminhos]
+      summary: Todos os caminhos até um comprimento máximo
+      description: |
+        Enumera **todos os caminhos simples** entre `from` e `to` com até `max`
+        arestas (DFS limitado).
+
+        Por padrão `max = 8` (referência aos "8 graus de separação"). O resultado
+        é truncado em **10000** caminhos — quando isso ocorre, `truncated = true`
+        e `cap = 10000`.
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - name: max
+          in: query
+          required: false
+          description: Comprimento máximo (em arestas) dos caminhos. Padrão `8`.
+          schema:
+            type: integer
+            minimum: 1
+            default: 8
+            example: 8
+      responses:
+        "200":
+          description: Caminhos encontrados (ou nenhum dentro do limite).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PathsResponse"
+              examples:
+                encontrados:
+                  summary: Caminhos encontrados
+                  value:
+                    paths:
+                      - path: ["Cillian Murphy", "Oppenheimer", "Florence Pugh"]
+                        length: 2
+                      - path: ["Cillian Murphy", "Inception", "Tom Hardy", "Dunkirk", "Florence Pugh"]
+                        length: 4
+                    count: 2
+                    minLength: 2
+                    maxLength: 4
+                    found: true
+                truncado:
+                  summary: Resultado truncado no cap
+                  value:
+                    paths: ["..."]
+                    count: 10000
+                    minLength: 2
+                    maxLength: 8
+                    truncated: true
+                    cap: 10000
+                    found: true
+                vazio:
+                  summary: Sem caminhos no limite
+                  value:
+                    paths: []
+                    count: 0
+                    found: false
+                    message: "nenhum relacionamento encontrado dentro do comprimento máximo"
+        "400":
+          $ref: "#/components/responses/MissingParams"
+        "404":
+          description: Ator não encontrado no grafo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PathsResponse"
+              example:
+                paths: []
+                found: false
+                message: "ator não encontrado"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+components:
+  parameters:
+    From:
+      name: from
+      in: query
+      required: true
+      description: Nome do ator de origem (precisa existir no grafo).
+      schema:
+        type: string
+        example: "Cillian Murphy"
+    To:
+      name: to
+      in: query
+      required: true
+      description: Nome do ator de destino (precisa existir no grafo).
+      schema:
+        type: string
+        example: "Florence Pugh"
+
+  responses:
+    MissingParams:
+      description: Parâmetros obrigatórios ausentes
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "parâmetros 'from' e 'to' são obrigatórios"
+    MethodNotAllowed:
+      description: Método HTTP não permitido (apenas `GET`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "método não permitido"
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        mensagem:
+          type: string
+          example: servidor ativo
+      required: [status, mensagem]
+
+    ActorsResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Quantidade de atores únicos
+          example: 1500
+        actors:
+          type: array
+          description: Lista ordenada alfabeticamente
+          items:
+            type: string
+      required: [count, actors]
+
+    AdjacencyResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Quantidade total de vértices
+        adjacency:
+          type: object
+          description: |
+            Mapa `vértice -> [vizinhos]`. Vértices de filme aparecem com sufixo
+            `(id)` para diferenciar títulos homônimos.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required: [count, adjacency]
+
+    PathResponse:
+      type: object
+      properties:
+        path:
+          type: array
+          description: Sequência de vértices do caminho (vazia se não encontrado)
+          items:
+            type: string
+        length:
+          type: integer
+          description: Número de arestas do caminho. `-1` quando não encontrado.
+          example: 2
+        found:
+          type: boolean
+        message:
+          type: string
+          description: Mensagem informativa quando `found = false`
+      required: [path, length, found]
+
+    PathItem:
+      type: object
+      properties:
+        path:
+          type: array
+          items:
+            type: string
+        length:
+          type: integer
+      required: [path, length]
+
+    PathsResponse:
+      type: object
+      properties:
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/PathItem"
+        count:
+          type: integer
+          description: Quantidade de caminhos retornados
+        minLength:
+          type: integer
+          description: Menor comprimento entre os caminhos retornados
+        maxLength:
+          type: integer
+          description: Maior comprimento entre os caminhos retornados
+        truncated:
+          type: boolean
+          description: Indica se o resultado foi truncado pelo limite interno
+        cap:
+          type: integer
+          description: Limite máximo aplicado (presente apenas se `truncated = true`)
+          example: 10000
+        found:
+          type: boolean
+        message:
+          type: string
+      required: [paths, count, found]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]

@@ -52,11 +52,11 @@ func Seed(movies []model.Movie) *Service {
 	for _, m := range movies {
 		label := vertexLabel(m)
 		titles[label] = m.Title
-		_ = g.AddVertex(label)
+		g.AddVertex(label)
 		for _, a := range m.Cast {
 			actors[a] = true
-			_ = g.AddVertex(a)
-			_ = g.AddEdge(label, a)
+			g.AddVertex(a)
+			g.AddEdge(label, a)
 		}
 	}
 	return &Service{g: g, actors: actors, movies: titles}
