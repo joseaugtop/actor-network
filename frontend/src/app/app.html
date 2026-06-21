@@ -1,340 +1,214 @@
-@let actorList = actors();
+@let capitalList = capitais();
 
-<div class="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-10">
+<div class="mx-auto flex min-h-screen max-w-4xl flex-col px-6 py-10">
 
   <!-- Top bar -->
   <nav class="mb-10 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2c2c54] to-[#1a1a2e]">
-        <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3L9 4H7l2 4H6L4 4H2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v11a1 1 0 0 0 1 1h20a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1V5a1 1 0 0 0-1-1h-4z"/>
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-emerald-600 to-teal-700">
+        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
       </div>
-      <span class="text-lg font-bold tracking-tight text-gray-800">8 Graus de Network</span>
+      <span class="text-lg font-bold tracking-tight text-gray-800">Caminho Mais Barato</span>
     </div>
-    @if (!loadingActors() && !loadError()) {
-      <span class="inline-flex items-center gap-2 rounded-full border border-yellow-200 bg-yellow-50 px-4 py-1.5">
+    @if (!loadingCapitais() && !loadError()) {
+      <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5">
         <span class="h-2 w-2 rounded-full bg-green-500"></span>
-        <span class="text-xs font-semibold text-yellow-800">{{ actorsCount() }} atores</span>
+        <span class="text-xs font-semibold text-emerald-800">{{ capitalList.length }} capitais</span>
       </span>
     }
   </nav>
 
-  <!-- Loading atores -->
-  @if (loadingActors()) {
+  <!-- Carregando capitais -->
+  @if (loadingCapitais()) {
     <div class="mx-auto flex w-full max-w-2xl items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-12 shadow-sm">
-      <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent"></span>
-      <span class="text-sm font-medium text-gray-500">Carregando base de atores…</span>
+      <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></span>
+      <span class="text-sm font-medium text-gray-500">Carregando capitais…</span>
     </div>
   }
 
-  <!-- Erro carregamento -->
+  <!-- Erro de carregamento -->
   @if (loadError()) {
     <div class="mx-auto w-full max-w-2xl rounded-2xl border border-gray-200 border-l-4 border-l-red-500 bg-red-50 p-6 shadow-sm">
-      <div class="flex items-start gap-3">
-        <svg class="mt-0.5 h-5 w-5 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div>
-          <h3 class="text-sm font-bold text-red-700">Falha na conexão</h3>
-          <p class="mt-1 text-sm leading-relaxed text-red-600">{{ loadError() }}</p>
-        </div>
-      </div>
+      <h3 class="text-sm font-bold text-red-700">Falha na conexão</h3>
+      <p class="mt-1 text-sm leading-relaxed text-red-600">{{ loadError() }}</p>
     </div>
   }
 
-  <!-- Main content -->
-  @if (!loadingActors() && !loadError()) {
+  <!-- Conteúdo principal -->
+  @if (!loadingCapitais() && !loadError()) {
     <div class="mx-auto w-full max-w-3xl">
 
-      <!-- Hero section -->
+      <!-- Hero -->
       <div class="mb-8 text-center">
         <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 md:text-5xl">
-          Descubra a
-          <span class="bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent"> Conexão </span>
-          entre Atores
+          Rota de
+          <span class="bg-linear-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent"> Menor Custo </span>
+          entre Capitais
         </h1>
         <p class="mx-auto mt-3 max-w-xl text-base leading-relaxed text-gray-500">
-          Digite dois atores e descubra quantos filmes os separam. O algoritmo BFS encontra o caminho mais curto no grafo de relações.
+          Informe origem, destino, preço do combustível e a autonomia do veículo.
+          O algoritmo de Dijkstra encontra a rota mais barata somando combustível e pedágios.
         </p>
       </div>
 
-      <!-- Search form -->
+      <!-- Formulário -->
       <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <!-- Accent line -->
-        <div class="h-1 w-full bg-gradient-to-r from-[#d4a853] via-[#2c2c54] to-[#d4a853]"></div>
+        <div class="h-1 w-full bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-500"></div>
 
         <div class="p-6 md:p-8">
-          <datalist id="actor-options">
-            @for (a of actorList; track a) {
-              <option [value]="a"></option>
-            }
-          </datalist>
-
-          <!-- Input fields -->
+          <!-- Origem / Destino -->
           <div class="flex flex-col gap-4 md:flex-row md:items-end md:gap-3">
-            <!-- From -->
             <div class="flex-1">
-              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
-                A
-              </label>
-              <input
-                type="text"
-                list="actor-options"
-                placeholder="Nome do primeiro ator"
-                autocomplete="off"
-                [ngModel]="from()"
-                (ngModelChange)="from.set($event)"
-                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 placeholder:text-gray-400 placeholder:font-normal focus:border-yellow-500 focus:shadow-[0_0_0_3px_rgba(212,168,83,0.15)]"
-              />
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">Origem</label>
+              <select
+                [ngModel]="origem()"
+                (ngModelChange)="origem.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+              >
+                <option value="" disabled>Selecione a capital de origem</option>
+                @for (c of capitalList; track c) {
+                  <option [value]="c">{{ c }}</option>
+                }
+              </select>
             </div>
 
-            <!-- Swap button -->
             <button
               type="button"
               (click)="swap()"
               aria-label="Inverter origem e destino"
               title="Inverter"
-              class="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-400 transition-all duration-200 hover:border-yellow-400 hover:bg-yellow-50 hover:text-yellow-600 md:mx-1"
+              class="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-400 transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600 md:mx-1"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
               </svg>
             </button>
 
-            <!-- To -->
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">Destino</label>
+              <select
+                [ngModel]="destino()"
+                (ngModelChange)="destino.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+              >
+                <option value="" disabled>Selecione a capital de destino</option>
+                @for (c of capitalList; track c) {
+                  <option [value]="c">{{ c }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Combustível / Autonomia -->
+          <div class="mt-4 flex flex-col gap-4 md:flex-row md:gap-3">
             <div class="flex-1">
               <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
-                B
+                Preço do combustível (R$/litro)
               </label>
               <input
-                type="text"
-                list="actor-options"
-                placeholder="Nome do segundo ator"
-                autocomplete="off"
-                [ngModel]="to()"
-                (ngModelChange)="to.set($event)"
-                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 placeholder:text-gray-400 placeholder:font-normal focus:border-yellow-500 focus:shadow-[0_0_0_3px_rgba(212,168,83,0.15)]"
+                type="number" min="0" step="0.01" placeholder="Ex.: 5.89"
+                [ngModel]="combustivel()"
+                (ngModelChange)="combustivel.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 placeholder:font-normal placeholder:text-gray-400 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
+                Autonomia (km/litro)
+              </label>
+              <input
+                type="number" min="0" step="0.1" placeholder="Ex.: 12"
+                [ngModel]="autonomia()"
+                (ngModelChange)="autonomia.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 placeholder:font-normal placeholder:text-gray-400 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
               />
             </div>
           </div>
 
-          <!-- Action buttons -->
-          <div class="mt-6 flex flex-wrap gap-3">
+          <!-- Botão -->
+          <div class="mt-6">
             <button
               type="button"
               [disabled]="!canSearch()"
-              (click)="runBfs()"
-              class="relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2c2c54] to-[#1a1a2e] px-6 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-[0_2px_8px_rgba(26,26,46,0.2)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(26,26,46,0.3)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
+              (click)="buscar()"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-br from-emerald-600 to-teal-700 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-[0_2px_8px_rgba(16,185,129,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(16,185,129,0.4)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              Caminho Mais Curto
-            </button>
-
-            <button
-              type="button"
-              [disabled]="!canSearch()"
-              (click)="runBfs8()"
-              class="relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#d4a853] to-[#c4944a] px-6 py-3 text-sm font-bold uppercase tracking-wider text-yellow-900 shadow-[0_2px_8px_rgba(212,168,83,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(212,168,83,0.4)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-              Todos os Caminhos (até 8)
+              Calcular Rota Mais Barata
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Searching indicator -->
+      <!-- Buscando -->
       @if (searching()) {
         <div class="mt-6 flex items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-10 shadow-sm">
-          <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent"></span>
-          <span class="text-sm font-medium text-gray-500">Buscando caminho no grafo…</span>
+          <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></span>
+          <span class="text-sm font-medium text-gray-500">Calculando rota…</span>
         </div>
       }
 
-      <!-- Error message -->
+      <!-- Erro -->
       @if (errorMessage()) {
         <div class="mt-6 rounded-2xl border border-gray-200 border-l-4 border-l-red-500 bg-red-50 p-5 shadow-sm">
-          <div class="flex items-center gap-3">
-            <svg class="h-5 w-5 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <p class="text-sm font-medium text-red-700">{{ errorMessage() }}</p>
-          </div>
+          <p class="text-sm font-medium text-red-700">{{ errorMessage() }}</p>
         </div>
       }
 
-      <!-- BFS Result -->
-      @if (mode() === 'bfs' && bfsResult(); as res) {
-        <div class="mt-6 animate-fade-slide-up">
+      <!-- Resultado -->
+      @if (resultado(); as res) {
+        <div class="mt-6">
           @if (!res.found) {
+            <!-- Rota inexistente -->
             <div class="rounded-2xl border border-gray-200 border-l-4 border-l-red-400 bg-red-50 p-6 shadow-sm">
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
-                  <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-bold text-red-700">Sem conexão</h3>
-                  <p class="mt-0.5 text-sm text-red-600">{{ res.message ?? 'Nenhum relacionamento encontrado entre os atores informados.' }}</p>
-                </div>
-              </div>
+              <h3 class="text-sm font-bold text-red-700">Sem rota</h3>
+              <p class="mt-0.5 text-sm text-red-600">
+                {{ res.message ?? 'Não existe rota entre as capitais selecionadas.' }}
+              </p>
             </div>
           } @else {
-            <!-- Result header -->
-            <div class="mb-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <div class="h-1 w-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
-              <div class="flex flex-wrap items-center justify-between gap-3 p-5">
-                <div class="flex items-center gap-3">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 class="text-base font-bold text-gray-800">Caminho Encontrado</h3>
-                    <p class="text-xs text-gray-400">BFS — menor distância no grafo</p>
-                  </div>
-                </div>
-                <div class="flex gap-4">
-                  <div class="text-center">
-                    <span class="block text-2xl font-extrabold text-gray-800">{{ res.length }}</span>
-                    <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Arestas</span>
-                  </div>
-                  <div class="text-center">
-                    <span class="block text-2xl font-extrabold text-gray-800">{{ res.path.length }}</span>
-                    <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Vértices</span>
-                  </div>
-                </div>
+            <!-- Resumo de custos -->
+            <div class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <span class="block text-2xl font-extrabold text-gray-800">{{ res.distance }}</span>
+                <span class="text-xs font-medium uppercase tracking-wider text-gray-400">km</span>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <span class="block text-xl font-extrabold text-gray-800">{{ brl(res.fuelCost) }}</span>
+                <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Combustível</span>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <span class="block text-xl font-extrabold text-gray-800">{{ brl(res.tollCost) }}</span>
+                <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Pedágios</span>
+              </div>
+              <div class="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center shadow-sm">
+                <span class="block text-xl font-extrabold text-emerald-700">{{ brl(res.totalCost) }}</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Total</span>
               </div>
             </div>
 
-            <!-- Path visualization -->
+            <!-- Rota (sequência de capitais) -->
             <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+              <h3 class="mb-3 text-sm font-bold text-gray-700">Rota ({{ res.path.length }} capitais)</h3>
               <div class="flex flex-wrap items-center gap-2">
-                @for (node of res.path; track node + $index) {
+                @for (capital of res.path; track capital + $index) {
                   @if ($index > 0) {
-                    <span class="inline-flex items-center justify-center text-[#d4a853]">
+                    <span class="inline-flex items-center justify-center text-emerald-500">
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                       </svg>
                     </span>
                   }
-                  <div
-                    class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800"
-                    [class.border-2]="true"
-                    [class.border-blue-400]="!isMovieNode(node, $index)"
-                    [class.bg-blue-50]="!isMovieNode(node, $index)"
-                    [class.border-amber-400]="isMovieNode(node, $index)"
-                    [class.bg-amber-50]="isMovieNode(node, $index)"
-                  >
-                    <span class="text-xs">{{ isMovieNode(node, $index) ? '🎬' : '👤' }}</span>
-                    <span>{{ node }}</span>
+                  <div class="inline-flex items-center gap-1.5 rounded-lg border-2 border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-gray-800">
+                    <span class="text-xs">📍</span>
+                    <span>{{ capital }}</span>
                   </div>
                 }
               </div>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- BFS8 Result -->
-      @if (mode() === 'bfs8' && bfs8Result(); as res) {
-        <div class="mt-6 animate-fade-slide-up">
-          @if (!res.found) {
-            <div class="rounded-2xl border border-gray-200 border-l-4 border-l-red-400 bg-red-50 p-6 shadow-sm">
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
-                  <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-bold text-red-700">Sem conexão</h3>
-                  <p class="mt-0.5 text-sm text-red-600">{{ res.message ?? 'Nenhum relacionamento encontrado dentro do comprimento máximo.' }}</p>
-                </div>
-              </div>
-            </div>
-          } @else {
-            <!-- Result header -->
-            <div class="mb-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <div class="h-1 w-full bg-gradient-to-r from-[#d4a853] to-[#c4944a]"></div>
-              <div class="flex flex-wrap items-center justify-between gap-3 p-5">
-                <div class="flex items-center gap-3">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-                    <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 class="text-base font-bold text-gray-800">{{ res.count }} Caminho(s) Encontrado(s)</h3>
-                    <p class="text-xs text-gray-400">
-                      @if (res.minLength === res.maxLength) {
-                        Todos com {{ res.minLength }} arestas
-                      } @else {
-                        Entre {{ res.minLength }} e {{ res.maxLength }} arestas
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Truncated warning -->
-            @if (res.truncated) {
-              <div class="mb-4 flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3">
-                <svg class="h-5 w-5 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                <p class="text-sm font-medium text-amber-700">
-                  Resultado truncado: limite de <strong>{{ res.cap }}</strong> caminhos. Os mais curtos aparecem primeiro.
-                </p>
-              </div>
-            }
-
-            <!-- Paths list -->
-            <div class="flex max-h-[65vh] flex-col gap-3 overflow-y-auto pr-1">
-              @for (item of res.paths; track trackPath($index, item); let i = $index) {
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 transition-all duration-200 hover:border-yellow-200 hover:shadow-md">
-                  <!-- Path header -->
-                  <div class="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
-                    <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
-                      <span class="flex h-5 w-5 items-center justify-center rounded-md bg-gray-200 text-[10px] font-extrabold text-gray-500">{{ i + 1 }}</span>
-                      Caminho {{ i + 1 }}
-                    </span>
-                    <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-500">{{ item.length }} arestas</span>
-                  </div>
-                  <!-- Path nodes -->
-                  <div class="flex flex-wrap items-center gap-2">
-                    @for (node of item.path; track node + $index) {
-                      @if ($index > 0) {
-                        <span class="inline-flex items-center justify-center text-[#d4a853]">
-                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                          </svg>
-                        </span>
-                      }
-                      <div
-                        class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 sm:text-sm"
-                        [class.border-2]="true"
-                        [class.border-blue-400]="!isMovieNode(node, $index)"
-                        [class.bg-blue-50]="!isMovieNode(node, $index)"
-                        [class.border-amber-400]="isMovieNode(node, $index)"
-                        [class.bg-amber-50]="isMovieNode(node, $index)"
-                      >
-                        <span class="text-xs">{{ isMovieNode(node, $index) ? '🎬' : '👤' }}</span>
-                        <span>{{ node }}</span>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
             </div>
           }
         </div>
@@ -346,7 +220,7 @@
   <!-- Footer -->
   <footer class="mt-auto pt-12 text-center">
     <div class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2">
-      <span class="text-xs font-medium text-gray-400">UNESC · Teoria de Grafos · TD 01</span>
+      <span class="text-xs font-medium text-gray-400">UNESC · Teoria de Grafos · TD 02</span>
     </div>
   </footer>
 

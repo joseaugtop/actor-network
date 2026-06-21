@@ -8,153 +8,77 @@ import (
 	"grafotb1/service"
 )
 
-// --- Tipos de resposta ------------------------------------------------------
-
-type pathResponse struct {
-	Path    []string `json:"path"`
-	Length  int      `json:"length"`
-	Found   bool     `json:"found"`
-	Message string   `json:"message,omitempty"`
+// GET /capitais — lista de capitais (alimenta os selects do frontend).
+func (s *Server) handleCapitais(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "método não permitido"})
+		return
+	}
+	capitais := s.svc.Capitals()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"count":    len(capitais),
+		"capitais": capitais,
+	})
 }
 
-type pathItem struct {
-	Path   []string `json:"path"`
-	Length int      `json:"length"`
-}
-
-type pathsResponse struct {
-	Paths     []pathItem `json:"paths"`
-	Count     int        `json:"count"`
-	MinLength int        `json:"minLength,omitempty"`
-	MaxLength int        `json:"maxLength,omitempty"`
-	Truncated bool       `json:"truncated,omitempty"`
-	Cap       int        `json:"cap,omitempty"`
-	Found     bool       `json:"found"`
-	Message   string     `json:"message,omitempty"`
-}
-
-// --- Handlers ---------------------------------------------------------------
-
-// GET /show — adjacências completas do grafo.
+// GET /show — lista de adjacências: cada capital e seus vizinhos com a distância.
 func (s *Server) handleShow(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "método não permitido"})
 		return
 	}
-	adj := s.svc.AdjacencyMap()
+	adj := s.svc.Show()
 	writeJSON(w, http.StatusOK, map[string]any{
 		"count":     len(adj),
 		"adjacency": adj,
 	})
 }
 
-// GET /actors — lista ordenada de atores.
-func (s *Server) handleActors(w http.ResponseWriter, r *http.Request) {
+// GET /caminho?origem=&destino=&combustivel=&autonomia=
+// Devolve a rota de menor custo entre duas capitais.
+func (s *Server) handleCaminho(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "método não permitido"})
 		return
 	}
-	actors := s.svc.Actors()
-	writeJSON(w, http.StatusOK, map[string]any{
-		"count":  len(actors),
-		"actors": actors,
-	})
-}
 
-// GET /bfs?from=&to= — caminho mínimo entre dois atores.
-func (s *Server) handleBFS(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "método não permitido"})
-		return
-	}
-	from, to, ok := readEndpoints(w, r)
-	if !ok {
-		return
-	}
-
-	path, err := s.svc.ShortestPath(from, to)
-	if errors.Is(err, service.ErrVertexNotFound) {
-		writeJSON(w, http.StatusNotFound, pathResponse{
-			Path: []string{}, Length: -1, Found: false,
-			Message: "ator não encontrado",
-		})
-		return
-	}
-	if path == nil {
-		writeJSON(w, http.StatusOK, pathResponse{
-			Path: []string{}, Length: -1, Found: false,
-			Message: "nenhum relacionamento encontrado",
-		})
-		return
-	}
-	writeJSON(w, http.StatusOK, pathResponse{
-		Path:   path,
-		Length: len(path) - 1,
-		Found:  true,
-	})
-}
-
-// GET /bfs8?from=&to=&max= — todos os caminhos até max arestas (padrão 8).
-func (s *Server) handleBFS8(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "método não permitido"})
-		return
-	}
-	from, to, ok := readEndpoints(w, r)
-	if !ok {
-		return
-	}
-
-	maxLen := 8
-	if v := r.URL.Query().Get("max"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			maxLen = n
-		}
-	}
-
-	paths, truncated, err := s.svc.AllPathsUpTo(from, to, maxLen)
-	if errors.Is(err, service.ErrVertexNotFound) {
-		writeJSON(w, http.StatusNotFound, pathsResponse{
-			Paths: []pathItem{}, Found: false, Message: "ator não encontrado",
-		})
-		return
-	}
-	if len(paths) == 0 {
-		writeJSON(w, http.StatusOK, pathsResponse{
-			Paths: []pathItem{}, Count: 0, Found: false,
-			Message: "nenhum relacionamento encontrado dentro do comprimento máximo",
-		})
-		return
-	}
-
-	items := make([]pathItem, len(paths))
-	for i, p := range paths {
-		items[i] = pathItem{Path: p, Length: len(p) - 1}
-	}
-	resp := pathsResponse{
-		Paths:     items,
-		Count:     len(items),
-		MinLength: len(paths[0]) - 1,
-		MaxLength: len(paths[len(paths)-1]) - 1,
-		Truncated: truncated,
-		Found:     true,
-	}
-	if truncated {
-		resp.Cap = service.MaxPathsCap
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-// --- Helpers ----------------------------------------------------------------
-
-func readEndpoints(w http.ResponseWriter, r *http.Request) (string, string, bool) {
-	from := r.URL.Query().Get("from")
-	to := r.URL.Query().Get("to")
-	if from == "" || to == "" {
+	q := r.URL.Query()
+	origem := q.Get("origem")
+	destino := q.Get("destino")
+	if origem == "" || destino == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "parâmetros 'from' e 'to' são obrigatórios",
+			"error": "parâmetros 'origem' e 'destino' são obrigatórios",
 		})
-		return "", "", false
+		return
 	}
-	return from, to, true
+
+	fuelPrice, errFuel := strconv.ParseFloat(q.Get("combustivel"), 64)
+	autonomy, errAuto := strconv.ParseFloat(q.Get("autonomia"), 64)
+	if errFuel != nil || errAuto != nil || fuelPrice <= 0 || autonomy <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "'combustivel' e 'autonomia' devem ser números positivos",
+		})
+		return
+	}
+
+	res, err := s.svc.CheapestPath(origem, destino, fuelPrice, autonomy)
+	if errors.Is(err, service.ErrCityNotFound) {
+		writeJSON(w, http.StatusNotFound, map[string]any{
+			"found":   false,
+			"message": "capital de origem ou destino não encontrada",
+		})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if !res.Found {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"found":   false,
+			"message": "não existe rota entre as capitais selecionadas",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }

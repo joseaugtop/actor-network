@@ -1,249 +1,245 @@
-// Lógica de grafo: construção da rede ator-filme e buscas (BFS e DFS).
+// Package service contém a lógica do grafo de capitais:
+// montagem do grafo (Seed), exibição das adjacências (Show) e a busca do
+// Caminho Mais Barato usando o algoritmo de Dijkstra com um heap (fila de
+// prioridade).
 package service
 
 import (
+	"container/heap"
 	"errors"
-	"fmt"
+	"math"
 	"sort"
-
-	"github.com/dominikbraun/graph"
 
 	"grafotb1/model"
 )
 
-var ErrVertexNotFound = errors.New("vértice não encontrado")
+// ErrCityNotFound é retornado quando a origem ou o destino não existem no grafo.
+var ErrCityNotFound = errors.New("capital não encontrada")
 
-// vertexLabel gera um rótulo único para o vértice usando o ID do filme.
-// Ex: "Dune (841)" vs "Dune (438631)"
-func vertexLabel(m model.Movie) string {
-	return fmt.Sprintf("%s (%d)", m.Title, m.Id)
-}
-
-// cleanLabel remove o sufixo "(ID)" para exibição no frontend.
-func cleanLabel(v string) string {
-	n := len(v)
-	if n < 3 || v[n-1] != ')' {
-		return v
-	}
-	i := n - 2
-	for i > 0 && v[i] != '(' {
-		i--
-	}
-	if i <= 0 || v[i] != '(' || v[i-1] != ' ' {
-		return v
-	}
-	return v[:i-1]
-}
-
-// --- Grafo ------------------------------------------------------------------
-
+// Service guarda o grafo de capitais como uma Lista de Adjacências.
+//
+//   - adj[A][B] = distância em km entre as capitais A e B.
+//   - tolls[A]  = pedágio cobrado ao passar pela capital A.
+//
+// O grafo é NÃO direcionado: se existe a aresta A→B, também existe B→A com a
+// mesma distância.
 type Service struct {
-	g      graph.Graph[string, string]
-	actors map[string]bool
-	movies map[string]string // key: label interno (com ID), value: título limpo
+	adj   map[string]map[string]int
+	tolls map[string]int
 }
 
-// Seed carrega os filmes no grafo, criando vértices e arestas.
-func Seed(movies []model.Movie) *Service {
-	g := graph.New(graph.StringHash)
-	actors := map[string]bool{}
-	titles := map[string]string{} // label interno -> título limpo
+// Seed monta o grafo a partir dos dados lidos do capitais.json.
+//
+// O JSON é uma lista de objetos e o nome da capital é a CHAVE de cada objeto
+// (por isso o tipo []map[string]model.City).
+func Seed(entries []map[string]model.City) *Service {
+	s := &Service{
+		adj:   make(map[string]map[string]int),
+		tolls: make(map[string]int),
+	}
 
-	for _, m := range movies {
-		label := vertexLabel(m)
-		titles[label] = m.Title
-		g.AddVertex(label)
-		for _, a := range m.Cast {
-			actors[a] = true
-			g.AddVertex(a)
-			g.AddEdge(label, a)
+	for _, entry := range entries {
+		for name, city := range entry {
+			s.tolls[name] = city.Toll
+			// Garante que a capital exista no grafo mesmo que não tenha
+			// vizinhos (ex.: Macapá não tem rota terrestre).
+			if s.adj[name] == nil {
+				s.adj[name] = make(map[string]int)
+			}
+			for neighbor, distance := range city.Neighbors {
+				s.addEdge(name, neighbor, distance)
+			}
 		}
 	}
-	return &Service{g: g, actors: actors, movies: titles}
+	return s
 }
 
-// --- Consultas --------------------------------------------------------------
+// addEdge cria a aresta nos dois sentidos (grafo não direcionado).
+func (s *Service) addEdge(from, to string, distance int) {
+	if s.adj[from] == nil {
+		s.adj[from] = make(map[string]int)
+	}
+	if s.adj[to] == nil {
+		s.adj[to] = make(map[string]int)
+	}
+	s.adj[from][to] = distance
+	s.adj[to][from] = distance
+}
 
-func (s *Service) Actors() []string {
-	out := make([]string, 0, len(s.actors))
-	for a := range s.actors {
-		out = append(out, a)
+// Capitals devolve a lista de capitais em ordem alfabética.
+// Serve para alimentar os selects/datalist do frontend.
+func (s *Service) Capitals() []string {
+	out := make([]string, 0, len(s.adj))
+	for name := range s.adj {
+		out = append(out, name)
 	}
 	sort.Strings(out)
 	return out
 }
 
-func (s *Service) HasVertex(v string) bool {
-	_, err := s.g.Vertex(v)
-	return err == nil
+// HasCity informa se a capital existe no grafo.
+func (s *Service) HasCity(city string) bool {
+	_, ok := s.adj[city]
+	return ok
 }
 
-func (s *Service) AdjacencyMap() map[string][]string {
-	adj, _ := s.g.AdjacencyMap()
-	out := make(map[string][]string, len(adj))
-	for v, ns := range adj {
-		neighbours := make([]string, 0, len(ns))
-		for n := range ns {
-			neighbours = append(neighbours, n)
+// Neighbor é uma capital vizinha com a distância correspondente (usado no Show).
+type Neighbor struct {
+	Name     string `json:"name"`
+	Distance int    `json:"distance"`
+}
+
+// Show devolve, para cada capital, a lista ordenada de vizinhos com a distância.
+// É a "Lista de Adjacências" pedida no trabalho.
+func (s *Service) Show() map[string][]Neighbor {
+	out := make(map[string][]Neighbor, len(s.adj))
+	for city, neighbors := range s.adj {
+		list := make([]Neighbor, 0, len(neighbors))
+		for name, distance := range neighbors {
+			list = append(list, Neighbor{Name: name, Distance: distance})
 		}
-		sort.Strings(neighbours)
-		out[v] = neighbours
+		sort.Slice(list, func(i, j int) bool { return list[i].Name < list[j].Name })
+		out[city] = list
 	}
 	return out
 }
 
-// --- BFS: caminho mínimo ----------------------------------------------------
+// --- Caminho Mais Barato (Dijkstra com heap) --------------------------------
 
-// Retorna o menor caminho entre from e to, ou nil se não existir.
-// Os nós de filme no caminho são retornados com o título limpo (sem ID).
-func (s *Service) ShortestPath(from, to string) ([]string, error) {
-	if !s.HasVertex(from) || !s.HasVertex(to) {
-		return nil, ErrVertexNotFound
-	}
-	if from == to {
-		return []string{from}, nil
-	}
-
-	adj, _ := s.g.AdjacencyMap()
-
-	// parent guarda de onde cada vértice foi alcançado e também
-	// faz o papel de "visitados".
-	parent := map[string]string{from: ""}
-	queue := []string{from}
-
-	for len(queue) > 0 {
-		v := queue[0]
-		queue = queue[1:]
-
-		for n := range adj[v] {
-			if _, seen := parent[n]; seen {
-				continue
-			}
-			parent[n] = v
-			if n == to {
-				return s.reconstructPath(parent, from, to), nil
-			}
-			queue = append(queue, n)
-		}
-	}
-	return nil, nil
+// Result é o resultado da busca do caminho mais barato.
+type Result struct {
+	Path      []string `json:"path"`      // capitais na ordem, da origem ao destino
+	Distance  int      `json:"distance"`  // distância total percorrida (km)
+	FuelCost  float64  `json:"fuelCost"`  // gasto somente com combustível
+	TollCost  float64  `json:"tollCost"`  // gasto somente com pedágios
+	TotalCost float64  `json:"totalCost"` // combustível + pedágios
+	Found     bool     `json:"found"`     // existe rota?
 }
 
-// reconstrói o caminho andando o parent de trás para frente.
-func (s *Service) reconstructPath(parent map[string]string, from, to string) []string {
-	var path []string
-	cur := to
-	for {
-		path = append([]string{s.cleanNodeLabel(cur)}, path...)
-		if cur == from {
-			return path
-		}
-		cur = parent[cur]
+// CheapestPath encontra a rota de MENOR CUSTO entre origem e destino.
+//
+// O custo de uma viagem tem duas partes:
+//
+//   - Combustível de um trecho = (distância_km / autonomia) * preçoDoLitro
+//   - Pedágio = cobrado ao CHEGAR em cada capital. A origem não paga (estamos
+//     saindo dela); todas as capitais seguintes, inclusive o destino, pagam.
+//
+// O Dijkstra precisa de um único peso por aresta. Então embutimos o pedágio da
+// capital de chegada dentro do peso da aresta:
+//
+//	peso(u → v) = combustível(u, v) + pedágio(v)
+//
+// O heap (fila de prioridade) garante que sempre expandimos primeiro a capital
+// de menor custo acumulado — é isso que torna o Dijkstra correto e eficiente.
+func (s *Service) CheapestPath(from, to string, fuelPrice, autonomy float64) (Result, error) {
+	if !s.HasCity(from) || !s.HasCity(to) {
+		return Result{}, ErrCityNotFound
 	}
+	if autonomy <= 0 || fuelPrice < 0 {
+		return Result{}, errors.New("preço do combustível e autonomia devem ser positivos")
+	}
+
+	// cost[c] = menor custo já conhecido para chegar em c a partir da origem.
+	cost := make(map[string]float64, len(s.adj))
+	for city := range s.adj {
+		cost[city] = math.Inf(1) // começa em "infinito": ainda não alcançado.
+	}
+	cost[from] = 0
+
+	// prev[c] = de qual capital chegamos em c (para remontar o caminho no fim).
+	prev := make(map[string]string)
+
+	// Fila de prioridade: sempre devolve a capital de menor custo primeiro.
+	pq := &priorityQueue{{city: from, cost: 0}}
+	heap.Init(pq)
+
+	for pq.Len() > 0 {
+		current := heap.Pop(pq).(pqItem)
+
+		// Chegamos ao destino com o menor custo possível: podemos parar.
+		if current.city == to {
+			break
+		}
+		// Entrada desatualizada (já achamos um caminho melhor): ignora.
+		if current.cost > cost[current.city] {
+			continue
+		}
+
+		// Tenta melhorar o custo de cada vizinho (relaxamento das arestas).
+		for neighbor, distance := range s.adj[current.city] {
+			edgeCost := fuelCost(distance, fuelPrice, autonomy) + float64(s.tolls[neighbor])
+			newCost := cost[current.city] + edgeCost
+			if newCost < cost[neighbor] {
+				cost[neighbor] = newCost
+				prev[neighbor] = current.city
+				heap.Push(pq, pqItem{city: neighbor, cost: newCost})
+			}
+		}
+	}
+
+	// Destino continuou em "infinito": não há rota.
+	if math.IsInf(cost[to], 1) {
+		return Result{Path: []string{}, Found: false}, nil
+	}
+
+	path := rebuildPath(prev, from, to)
+	result := s.summarize(path, fuelPrice, autonomy)
+	result.Found = true
+	return result, nil
 }
 
-// cleanNodeLabel retorna o título limpo se for filme, ou o nome original se for ator.
-func (s *Service) cleanNodeLabel(v string) string {
-	if _, ok := s.movies[v]; ok {
-		return s.movies[v]
-	}
-	return v
+// fuelCost calcula o gasto de combustível de um trecho.
+func fuelCost(distance int, fuelPrice, autonomy float64) float64 {
+	return (float64(distance) / autonomy) * fuelPrice
 }
 
-// --- DFS: todos os caminhos até maxLen --------------------------------------
-
-// Limite para a resposta não estourar o que o navegador renderiza.
-const MaxPathsCap = 10000
-
-// Enumera todo caminho simples de 'from' até 'to' com até maxLen arestas.
-// Os nós de filme nos caminhos são retornados com o título limpo (sem ID).
-func (s *Service) AllPathsUpTo(from, to string, maxLen int) ([][]string, bool, error) {
-	if !s.HasVertex(from) || !s.HasVertex(to) {
-		return nil, false, ErrVertexNotFound
+// rebuildPath remonta o caminho seguindo o prev de trás para frente
+// (destino → origem) e depois inverte para ficar origem → destino.
+func rebuildPath(prev map[string]string, from, to string) []string {
+	path := []string{to}
+	for current := to; current != from; {
+		current = prev[current]
+		path = append([]string{current}, path...)
 	}
-	if from == to {
-		return [][]string{{from}}, false, nil
+	return path
+}
+
+// summarize percorre o caminho final e soma distância, combustível e pedágios.
+func (s *Service) summarize(path []string, fuelPrice, autonomy float64) Result {
+	result := Result{Path: path}
+	for i := 1; i < len(path); i++ {
+		from, to := path[i-1], path[i]
+		distance := s.adj[from][to]
+		result.Distance += distance
+		result.FuelCost += fuelCost(distance, fuelPrice, autonomy)
+		result.TollCost += float64(s.tolls[to]) // pedágio ao chegar (origem não paga)
 	}
+	result.TotalCost = result.FuelCost + result.TollCost
+	return result
+}
 
-	adj, _ := s.g.AdjacencyMap()
+// --- Fila de prioridade (heap mínimo) usada pelo Dijkstra -------------------
+// Implementa a interface container/heap.Interface, ordenando pelo menor custo.
 
-	// pré-converte e ordena vizinhos para não repetir isso a cada chamada do DFS.
-	sortedNeighbours := make(map[string][]string, len(adj))
-	for vertex, neighboursMap := range adj {
-		neighbours := make([]string, 0, len(neighboursMap))
-		for neighbour := range neighboursMap {
-			neighbours = append(neighbours, neighbour)
-		}
-		sort.Strings(neighbours)
-		sortedNeighbours[vertex] = neighbours
-	}
+type pqItem struct {
+	city string
+	cost float64
+}
 
-	var paths [][]string
-	truncated := false
-	visited := map[string]bool{from: true}
-	path := []string{from}
+type priorityQueue []pqItem
 
-	var dfs func(node string, remaining int)
-	dfs = func(node string, remaining int) {
-		if truncated {
-			return
-		}
-		for _, n := range sortedNeighbours[node] {
-			if visited[n] {
-				continue
-			}
-			if remaining == 1 {
-				if n == to {
-					cp := make([]string, len(path)+1)
-					copy(cp, path)
-					cp[len(path)] = n
-					paths = append(paths, cp)
-					if len(paths) >= MaxPathsCap {
-						truncated = true
-						return
-					}
-				}
-				continue
-			}
-			if n == to {
-				continue
-			}
-			visited[n] = true
-			path = append(path, n)
-			dfs(n, remaining-1)
-			path = path[:len(path)-1]
-			delete(visited, n)
-			if truncated {
-				return
-			}
-		}
-	}
+func (pq priorityQueue) Len() int           { return len(pq) }
+func (pq priorityQueue) Less(i, j int) bool { return pq[i].cost < pq[j].cost }
+func (pq priorityQueue) Swap(i, j int)      { pq[i], pq[j] = pq[j], pq[i] }
 
-	for d := 1; d <= maxLen && !truncated; d++ {
-		dfs(from, d)
-	}
+func (pq *priorityQueue) Push(x any) {
+	*pq = append(*pq, x.(pqItem))
+}
 
-	// Ordena caminhos encontrados
-	sort.Slice(paths, func(i, j int) bool {
-		if len(paths[i]) != len(paths[j]) {
-			return len(paths[i]) < len(paths[j])
-		}
-		for k := 0; k < len(paths[i]); k++ {
-			if paths[i][k] != paths[j][k] {
-				return paths[i][k] < paths[j][k]
-			}
-		}
-		return false
-	})
-
-	// Limpa os rótulos dos filmes nos resultados
-	cleaned := make([][]string, len(paths))
-	for i, p := range paths {
-		cleaned[i] = make([]string, len(p))
-		for j, node := range p {
-			cleaned[i][j] = s.cleanNodeLabel(node)
-		}
-	}
-
-	return cleaned, truncated, nil
+func (pq *priorityQueue) Pop() any {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	*pq = old[:n-1]
+	return item
 }

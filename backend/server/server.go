@@ -18,10 +18,9 @@ func New(svc *service.Service) *Server {
 
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/actors", s.handleActors)
+	mux.HandleFunc("/capitais", s.handleCapitais)
 	mux.HandleFunc("/show", s.handleShow)
-	mux.HandleFunc("/bfs", s.handleBFS)
-	mux.HandleFunc("/bfs8", s.handleBFS8)
+	mux.HandleFunc("/caminho", s.handleCaminho)
 	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("docs"))))
 	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
