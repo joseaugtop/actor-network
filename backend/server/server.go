@@ -21,6 +21,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/capitais", s.handleCapitais)
 	mux.HandleFunc("/show", s.handleShow)
 	mux.HandleFunc("/caminho", s.handleCaminho)
+	mux.HandleFunc("/comparar", s.handleComparar)
 	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("docs"))))
 	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)

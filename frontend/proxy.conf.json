@@ -1,5 +1,6 @@
 {
   "/capitais": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
   "/show":     { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
-  "/caminho":  { "target": "http://localhost:8081", "secure": false, "changeOrigin": true }
+  "/caminho":  { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/comparar": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true }
 }

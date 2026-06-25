@@ -10,6 +10,8 @@ import (
 	"math"
 	"sort"
 
+	"github.com/dominikbraun/graph"
+
 	"grafotb1/model"
 )
 
@@ -242,4 +244,52 @@ func (pq *priorityQueue) Pop() any {
 	item := old[n-1]
 	*pq = old[:n-1]
 	return item
+}
+
+// --- Conferência com biblioteca externa -------------------------------------
+
+// libScale converte o custo (float, em reais) para inteiro, porque o Dijkstra
+// da biblioteca dominikbraun/graph usa pesos inteiros. 1e6 mantém precisão de
+// centavos com folga.
+const libScale = 1_000_000
+
+// ShortestPathLib resolve o MESMO problema do CheapestPath, mas usando o
+// Dijkstra pronto da biblioteca dominikbraun/graph. Existe só para conferência
+// independente: se o custo bate com o nosso, confiamos no resultado.
+//
+// O grafo aqui é DIRECIONADO de propósito: o peso da aresta inclui o pedágio da
+// capital de CHEGADA, então u→v e v→u têm pesos diferentes.
+func (s *Service) ShortestPathLib(from, to string, fuelPrice, autonomy float64) (Result, error) {
+	if !s.HasCity(from) || !s.HasCity(to) {
+		return Result{}, ErrCityNotFound
+	}
+	if autonomy <= 0 || fuelPrice < 0 {
+		return Result{}, errors.New("preço do combustível e autonomia devem ser positivos")
+	}
+	if from == to {
+		return Result{Path: []string{from}, Found: true}, nil
+	}
+
+	g := graph.New(graph.StringHash, graph.Weighted(), graph.Directed())
+	for city := range s.adj {
+		_ = g.AddVertex(city)
+	}
+	for u, vizinhos := range s.adj {
+		for v, km := range vizinhos {
+			weight := int(math.Round((fuelCost(km, fuelPrice, autonomy) + float64(s.tolls[v])) * libScale))
+			_ = g.AddEdge(u, v, graph.EdgeWeight(weight))
+		}
+	}
+
+	path, err := graph.ShortestPath(g, from, to)
+	if err != nil || len(path) == 0 {
+		// A lib retorna erro quando não existe caminho entre os vértices.
+		return Result{Path: []string{}, Found: false}, nil
+	}
+
+	// Recalcula o custo real (float) sobre o caminho que a lib achou, evitando
+	// o erro de arredondamento da escala — assim a comparação é justa.
+	result := s.summarize(path, fuelPrice, autonomy)
+	result.Found = true
+	return result, nil
 }
