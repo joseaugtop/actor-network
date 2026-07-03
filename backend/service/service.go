@@ -123,8 +123,9 @@ type Result struct {
 // O custo de uma viagem tem duas partes:
 //
 //   - Combustível de um trecho = (distância_km / autonomia) * preçoDoLitro
-//   - Pedágio = cobrado ao CHEGAR em cada capital. A origem não paga (estamos
-//     saindo dela); todas as capitais seguintes, inclusive o destino, pagam.
+//   - Pedágio = cobrado ao passar por uma capital. A origem não paga (estamos
+//     saindo dela) e o destino também não (fim da viagem); só as capitais
+//     intermediárias pagam.
 //
 // O Dijkstra precisa de um único peso por aresta. Então embutimos o pedágio da
 // capital de chegada dentro do peso da aresta:
@@ -207,6 +208,10 @@ func rebuildPath(prev map[string]string, from, to string) []string {
 }
 
 // summarize percorre o caminho final e soma distância, combustível e pedágios.
+//
+// O pedágio é cobrado ao CHEGAR numa capital, mas a origem (não estamos
+// chegando nela) e o destino (fim da viagem) NÃO pagam pedágio. Só as capitais
+// intermediárias, por onde a rota realmente passa, contam pedágio.
 func (s *Service) summarize(path []string, fuelPrice, autonomy float64) Result {
 	result := Result{Path: path}
 	for i := 1; i < len(path); i++ {
@@ -214,7 +219,9 @@ func (s *Service) summarize(path []string, fuelPrice, autonomy float64) Result {
 		distance := s.adj[from][to]
 		result.Distance += distance
 		result.FuelCost += fuelCost(distance, fuelPrice, autonomy)
-		result.TollCost += float64(s.tolls[to]) // pedágio ao chegar (origem não paga)
+		if i < len(path)-1 { // pedágio só nas capitais intermediárias (não no destino)
+			result.TollCost += float64(s.tolls[to])
+		}
 	}
 	result.TotalCost = result.FuelCost + result.TollCost
 	return result

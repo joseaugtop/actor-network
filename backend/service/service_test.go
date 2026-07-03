@@ -19,10 +19,11 @@ const eps = 1e-6
 //	arestas (km): A-B=100, B-C=100, A-C=250
 //	combustível=R$2/L, autonomia=10 km/L  ->  R$0,20 por km
 //
-// Caminho A->B->C: combustível (200 km * 0,20) = 40 ; pedágios B+C = 25 ; total = 65
-// Caminho A->C:    combustível (250 km * 0,20) = 50 ; pedágio  C   = 20 ; total = 70
+// O destino NÃO paga pedágio (fim da viagem); só as intermediárias pagam.
+// Caminho A->B->C: combustível (200 km * 0,20) = 40 ; pedágio  B (só ela) = 5 ; total = 45
+// Caminho A->C:    combustível (250 km * 0,20) = 50 ; pedágio  nenhum        = 0 ; total = 50
 //
-// Logo o mais barato A->C é A->B->C, custo 65.
+// Logo o mais barato A->C é A->B->C, custo 45.
 func TestCheapestPath_ExemploManual(t *testing.T) {
 	s := &Service{
 		adj:   map[string]map[string]int{},
@@ -43,9 +44,9 @@ func TestCheapestPath_ExemploManual(t *testing.T) {
 	if !equal(res.Path, wantPath) {
 		t.Errorf("path = %v, quero %v", res.Path, wantPath)
 	}
-	assertFloat(t, "total", res.TotalCost, 65)
+	assertFloat(t, "total", res.TotalCost, 45)
 	assertFloat(t, "fuel", res.FuelCost, 40)
-	assertFloat(t, "toll", res.TollCost, 25)
+	assertFloat(t, "toll", res.TollCost, 5)
 	if res.Distance != 200 {
 		t.Errorf("distance = %d, quero 200", res.Distance)
 	}
@@ -120,6 +121,12 @@ func TestCheapestPath_BateComBellmanFord(t *testing.T) {
 					t.Errorf("%s->%s: Dijkstra não achou rota, Bellman-Ford achou custo %.4f", origem, destino, want)
 					continue
 				}
+				// Bellman-Ford embute o pedágio do destino no custo; o serviço não
+				// cobra pedágio no destino. Tira o do destino para comparar (exceto
+				// quando origem==destino, que já custa 0).
+				if destino != origem {
+					want -= float64(s.tolls[destino])
+				}
 				if math.Abs(res.TotalCost-want) > eps {
 					t.Errorf("%s->%s: custo Dijkstra=%.6f, Bellman-Ford=%.6f", origem, destino, res.TotalCost, want)
 				}
@@ -183,7 +190,10 @@ func checkPathValido(t *testing.T, s *Service, res Result, origem, destino strin
 			t.Errorf("%s->%s: %s e %s não são vizinhas no caminho %v", origem, destino, a, b, res.Path)
 			return
 		}
-		total += fuelCost(km, fuel, autonomy) + float64(s.tolls[b])
+		total += fuelCost(km, fuel, autonomy)
+		if i < len(res.Path)-1 { // destino não paga pedágio
+			total += float64(s.tolls[b])
+		}
 	}
 	if math.Abs(total-res.TotalCost) > eps {
 		t.Errorf("%s->%s: recalculando o caminho deu %.6f, mas TotalCost=%.6f", origem, destino, total, res.TotalCost)
