@@ -1,58 +1,146 @@
-# 8 Graus de Network
+# Caminho Mais Barato entre Capitais
 
-Trabalho de Desenvolvimento 01 (TD 01) da disciplina de **Teoria de Grafos** do curso de **Ciência da Computação** da [UNESC](https://www.unesc.net/), sob orientação do **Prof. André Faria Ruaro**.
-
----
-
-## Sobre o projeto
-
-Aplicação que encontra o relacionamento mais próximo entre dois atores de cinema.
-
-Os dados são carregados a partir de um arquivo `latest_movies.json` e estruturados em um **Grafo não direcionado de Lista de Adjacências**, onde cada ator e cada filme são vértices, e a participação de um ator em um filme representa uma aresta.
+Trabalho de Desenvolvimento 02 (TD 02) da disciplina de **Teoria de Grafos** do curso de **Ciência da Computação** da [UNESC](https://www.unesc.net/), sob orientação do **Prof. André Faria Ruaro**.
 
 ---
 
-## Funcionalidades
+# Sobre o projeto
 
-- **Seed** — carrega os dados do JSON e monta o grafo
-- **Show** — exibe todos os vértices e seus adjacentes
-- **BFS** — encontra o caminho mínimo entre dois atores
-- **BFS com limite de 8** — encontra todos os caminhos com comprimento máximo de 8 arestas entre os atores selecionados
-- Interface com seleção de ator de origem e destino
-- Tratamento de caso sem relacionamento encontrado
+Aplicação web que encontra o **caminho de menor custo entre duas capitais brasileiras** utilizando o algoritmo de **Dijkstra**.
 
----
+As capitais são carregadas a partir do arquivo `capitais.json`, formando um **grafo não direcionado representado por Lista de Adjacências**.
 
-## Tecnologias
+Cada capital representa um vértice e cada estrada representa uma aresta com sua respectiva distância em quilômetros. Além da distância, cada capital possui um valor de pedágio utilizado no cálculo do custo total da viagem.
 
-- **Backend** — Go + [dominikbraun/graph](https://github.com/dominikbraun/graph)
-- **Frontend** — React
+O custo de cada trecho é calculado considerando:
+
+- consumo de combustível;
+- preço do combustível;
+- pedágios das capitais visitadas.
 
 ---
 
-## Estrutura do projeto
+# Funcionalidades
+
+- Carregamento automático do grafo a partir do arquivo `capitais.json`;
+- Visualização da Lista de Adjacências;
+- Listagem de todas as capitais cadastradas;
+- Cálculo do caminho de menor custo utilizando o algoritmo de Dijkstra;
+- Comparação entre a implementação própria do algoritmo e a biblioteca `dominikbraun/graph`;
+- Interface web para consulta das rotas;
+- API REST documentada.
+
+---
+
+# Algoritmos utilizados
+
+- Lista de Adjacências
+- Dijkstra (implementação própria utilizando Heap/Fila de Prioridade)
+- Dijkstra da biblioteca `github.com/dominikbraun/graph` (utilizado apenas para conferência dos resultados)
+- Bellman-Ford (utilizado nos testes automatizados)
+
+---
+
+# Tecnologias
+
+## Backend
+
+- Go
+- HTTP
+- JSON
+- OpenAPI
+- container/heap
+- github.com/dominikbraun/graph
+
+## Frontend
+
+- Angular
+- TypeScript
+- HTML
+- SCSS
+
+---
+
+# Estrutura do projeto
 
 ```
-actor-network/
+projeto/
 ├── backend/
 │   ├── api/
-│   │   └── latest_movies.json
-│   ├── cmd/main/
-│   │   └── main.go
-│   ├── pkg/
-│   │   └── movie.go
-│   └── go.mod
-└── frontend/              # em desenvolvimento
+│   │   └── capitais.json
+│   ├── cmd/
+│   │   └── main/
+│   ├── docs/
+│   ├── model/
+│   ├── server/
+│   ├── service/
+│   ├── scripts/
+│   ├── go.mod
+│   └── README.md
+│
+└── frontend/
+    ├── src/
+    ├── public/
+    ├── angular.json
+    ├── package.json
+    └── README.md
 ```
 
 ---
 
-## Disciplina
+# Modelo do Grafo
 
-| Campo | Info |
-|---|---|
+- **Vértices:** Capitais brasileiras
+- **Arestas:** Rodovias entre capitais
+- **Peso:** Custo da viagem
+
+O peso utilizado pelo algoritmo é calculado pela fórmula:
+
+```
+peso = combustível + pedágio
+```
+
+onde:
+
+```
+combustível = (distância ÷ autonomia) × preço do litro
+```
+
+O pedágio é cobrado ao chegar em cada capital (exceto a origem).
+
+---
+
+# Funcionalidades da API
+
+O backend disponibiliza os seguintes endpoints:
+
+| Método | Endpoint | Descrição |
+|---------|----------|-----------|
+| GET | `/capitais` | Lista todas as capitais |
+| GET | `/show` | Exibe a Lista de Adjacências |
+| GET | `/caminho` | Calcula o caminho de menor custo |
+| GET | `/comparar` | Compara o Dijkstra implementado com a biblioteca |
+
+---
+
+# Testes
+
+O projeto possui testes automatizados que verificam:
+
+- exemplo calculado manualmente;
+- capitais sem conexão;
+- origem igual ao destino;
+- comparação entre Dijkstra e Bellman-Ford;
+- validação dos caminhos encontrados.
+
+---
+
+# Disciplina
+
+| Campo | Informação |
+|--------|------------|
 | Curso | Ciência da Computação |
 | Disciplina | Teoria de Grafos |
-| Trabalho | TD 01 — 8 Graus de Network |
+| Trabalho | TD 02 — Caminho Mais Barato entre Capitais |
 | Professor | André Faria Ruaro |
 | Instituição | UNESC |
