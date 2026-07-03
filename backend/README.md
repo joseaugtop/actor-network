@@ -1,41 +1,73 @@
-# 8 Graus de Network — Backend
+# Caminho Mais Barato entre Capitais — Backend
 
-Backend em Go para o trabalho **TD 01 — 8 Graus de Network** (Teoria de Grafos / UNESC).
-Modela um grafo não direcionado bipartido **Filme ↔ Ator** a partir de `api/latest_movies.json` e expõe uma
-API HTTP para consultar os relacionamentos via BFS.
+Backend em Go para o trabalho de **Teoria de Grafos (UNESC)**.
 
-## Estrutura
+O sistema modela um **grafo não direcionado** das capitais brasileiras a partir do arquivo `api/capitais.json` e disponibiliza uma API HTTP para consultar:
+
+- Lista de capitais;
+- Lista de adjacências do grafo;
+- Caminho de menor custo entre duas capitais utilizando o algoritmo de **Dijkstra**;
+- Comparação entre a implementação própria do Dijkstra e a implementação da biblioteca `github.com/dominikbraun/graph`.
+
+---
+
+# Estrutura
 
 ```
 backend/
-├── api/latest_movies.json     # dataset de filmes/atores (seed)
-├── cmd/main/main.go           # ponto de entrada — carrega o JSON e sobe o servidor
-├── model/movie.go             # modelo Movie { id, title, cast }
-├── service/service.go         # construção do grafo + algoritmos (BFS e DFS)
-├── server/server.go           # roteamento HTTP, CORS e helpers
-├── server/handlers.go         # handlers de cada endpoint + tipos de resposta
-├── scripts/makefile           # atalhos de build/run
-├── go.mod / go.sum
-├── README.md
-└── ROADMAP.md                 # guia de estudo dos algoritmos
+├── api/
+│   └── capitais.json          # Dataset das capitais
+├── cmd/
+│   └── main/
+│       └── main.go            # Inicializa o servidor
+├── docs/
+│   ├── index.html             # Documentação da API
+│   └── openapi.yaml
+├── model/
+│   └── city.go                # Modelo City
+├── scripts/
+│   └── makefile
+├── server/
+│   ├── handlers.go            # Endpoints HTTP
+│   └── server.go              # Rotas e CORS
+├── service/
+│   ├── service.go             # Grafo + Dijkstra
+│   └── service_test.go        # Testes automatizados
+├── go.mod
+├── go.sum
+└── README.md
 ```
 
-## Pré-requisitos
+---
+
+# Pré-requisitos
 
 - Go 1.25+
-- A única dependência externa é [`github.com/dominikbraun/graph`](https://github.com/dominikbraun/graph),
-  usada apenas como estrutura de armazenamento. **As buscas são implementadas
-  manualmente** em `service/service.go` para atender ao escopo do trabalho.
+- Biblioteca:
 
-## Como executar
+```
+github.com/dominikbraun/graph
+```
 
-A partir da pasta `backend/`:
+A biblioteca é utilizada **apenas para conferência dos resultados**.
+
+O algoritmo principal de Dijkstra foi implementado manualmente utilizando:
+
+- Lista de Adjacências
+- Heap (Fila de Prioridade)
+- `container/heap`
+
+---
+
+# Como executar
+
+Na pasta `backend` execute:
 
 ```bash
 go run ./cmd/main
 ```
 
-Ou via makefile (a partir de `backend/scripts/`):
+ou
 
 ```bash
 make run
@@ -44,121 +76,265 @@ make run
 Saída esperada:
 
 ```
-grafo construído — 1500 filmes, 8905 atores únicos
+grafo construído — 27 capitais
 servidor iniciado em http://localhost:8081
 ```
 
-## Como o grafo é construído
+---
 
-- **Vértices**: cada filme (`title`) e cada ator do `cast` viram um vértice (strings).
-- **Arestas**: o grafo é **não direcionado** — uma única aresta por par (filme, ator) já conecta os dois sentidos automaticamente.
-- Duplicatas no dataset (IDs repetidos, mesmo ator listado duas vezes em um filme) são
-  toleradas: `AddVertex` ignora vértices repetidos e o erro de `AddEdge` para arestas já
-  existentes é descartado.
+# Como o grafo é construído
 
-## Endpoints
+Cada capital representa um **vértice**.
 
-Todos os endpoints respondem JSON e suportam CORS (`Access-Control-Allow-Origin: *`).
+Cada estrada entre capitais representa uma **aresta**.
 
-### `GET /health`
-Status do servidor.
-
-```bash
-curl http://localhost:8081/health
-```
-
-```json
-{ "status": "ok", "mensagem": "servidor ativo" }
-```
-
-### `GET /actors`
-Lista de todos os atores (ordenada alfabeticamente). Usada para popular `<select>`/`<datalist>`
-no frontend.
-
-```bash
-curl http://localhost:8081/actors
-```
+O arquivo `capitais.json` possui o seguinte formato:
 
 ```json
 {
-  "count": 8905,
-  "actors": ["A. J. Cook", "Aaron Eckhart", "Aaron Paul", "..."]
-}
-```
-
-### `GET /bfs?from=<ator>&to=<ator>`
-Executa um **BFS clássico** e retorna o **caminho mínimo** entre dois atores.
-
-```bash
-curl "http://localhost:8081/bfs?from=Zendaya&to=Tom%20Cruise"
-```
-
-Sucesso:
-
-```json
-{
-  "path": ["Zendaya", "The Greatest Showman", "Rebecca Ferguson", "Mission: Impossible - Dead Reckoning Part One", "Tom Cruise"],
-  "length": 4,
-  "found": true
-}
-```
-
-Não encontrado:
-
-```json
-{ "path": [], "length": -1, "found": false, "message": "nenhum relacionamento encontrado" }
-```
-
-Ator inexistente (HTTP 404):
-
-```json
-{ "path": [], "length": -1, "found": false, "message": "ator não encontrado" }
-```
-
-### `GET /bfs8?from=<ator>&to=<ator>&max=<numero>`
-Enumera **todos os caminhos simples** entre dois atores com comprimento ≤ `max` (padrão **8**).
-Usa DFS com aprofundamento iterativo: executa uma DFS por profundidade (d = 1..max),
-garantindo que caminhos menores sejam encontrados antes dos maiores.
-
-```bash
-curl "http://localhost:8081/bfs8?from=Zendaya&to=Samuel%20L.%20Jackson"
-```
-
-```json
-{
-  "paths": [
-    {
-      "path": ["Zendaya", "Spider-Man: Far From Home", "Samuel L. Jackson"],
-      "length": 2
+    "Curitiba": {
+        "toll": 30,
+        "neighbors": {
+            "São Paulo": 408,
+            "Florianópolis": 300
+        }
     }
-  ],
-  "count": 1,
-  "minLength": 2,
-  "maxLength": 2,
-  "found": true
 }
 ```
 
-Quando não há relação dentro do limite:
+Cada capital possui:
 
-```json
-{ "paths": [], "count": 0, "found": false, "message": "nenhum relacionamento encontrado dentro do comprimento máximo" }
+- pedágio (`toll`);
+- lista de capitais vizinhas (`neighbors`);
+- distância em quilômetros para cada vizinha.
+
+Durante o carregamento do JSON, o método `Seed()` monta uma **Lista de Adjacências**, onde:
+
+```
+adj[A][B] = distância entre A e B
 ```
 
-## Algoritmos
+Como o grafo é **não direcionado**, toda aresta é criada nos dois sentidos.
 
-- **BFS (`/bfs`)**: BFS padrão sobre lista de adjacências, com mapa de pais para reconstruir o caminho mínimo. Garante o menor caminho porque visita por camadas.
-- **DFS com aprofundamento iterativo (`/bfs8`)**: para cada profundidade d de 1 até `max`, executa uma DFS que só aceita caminhos de exatamente d arestas. Enumera todos os caminhos simples em ordem crescente de tamanho. Limitado a `10.000` resultados para evitar esgotamento de memória em grafos densos.
+Exemplo:
 
-> Como o grafo é bipartido, todo caminho entre dois atores tem **comprimento par**
-> (alterna ator → filme → ator → ...).
+```
+Curitiba -------- São Paulo
+```
 
-## Notas sobre o dataset
+gera:
 
-O `latest_movies.json` contém **1500 filmes** e **8905 atores únicos**, com algumas
-duplicatas conhecidas:
+```
+Curitiba -> São Paulo
 
-- ~25 IDs de filmes repetidos
-- ~50 títulos de filmes repetidos (remakes ou entradas redundantes)
+São Paulo -> Curitiba
+```
 
-Essas duplicatas não corrompem o grafo: o `Seed` as absorve silenciosamente.
+---
+
+# Modelo de custo
+
+O objetivo não é encontrar o menor caminho em quilômetros, mas sim o caminho de **menor custo financeiro**.
+
+Cada trecho possui dois custos:
+
+## Combustível
+
+```
+(distância / autonomia) × preço do litro
+```
+
+## Pedágio
+
+Ao chegar em uma capital é cobrado o pedágio daquela cidade.
+
+A capital de origem não paga pedágio.
+
+Assim, o peso utilizado pelo algoritmo é:
+
+```
+peso(u,v)
+
+=
+
+combustível(u,v)
+
++
+
+pedágio(v)
+```
+
+---
+
+# Algoritmo
+
+O sistema utiliza o algoritmo de **Dijkstra** com **Heap (Fila de Prioridade)**.
+
+O algoritmo mantém:
+
+- custo mínimo conhecido para cada capital;
+- capital anterior (`prev`) para reconstrução do caminho;
+- fila de prioridade contendo sempre a capital de menor custo acumulado.
+
+Ao final são calculados:
+
+- caminho encontrado;
+- distância total;
+- custo de combustível;
+- custo dos pedágios;
+- custo total.
+
+---
+
+# Endpoints
+
+Todos retornam JSON.
+
+---
+
+## GET /capitais
+
+Lista todas as capitais em ordem alfabética.
+
+Exemplo:
+
+```
+GET /capitais
+```
+
+Resposta:
+
+```json
+{
+  "count": 27,
+  "capitais": [
+    "Aracajú",
+    "Belém",
+    "Belo Horizonte"
+  ]
+}
+```
+
+---
+
+## GET /show
+
+Exibe a Lista de Adjacências do grafo.
+
+```
+GET /show
+```
+
+Resposta:
+
+```json
+{
+  "count": 27,
+  "adjacency": {
+    "Curitiba": [
+      {
+        "name":"Florianópolis",
+        "distance":300
+      }
+    ]
+  }
+}
+```
+
+---
+
+## GET /caminho
+
+Calcula o caminho de menor custo utilizando a implementação própria do algoritmo de Dijkstra.
+
+Parâmetros:
+
+```
+origem
+destino
+combustivel
+autonomia
+```
+
+Exemplo:
+
+```
+GET /caminho?origem=Curitiba&destino=Rio%20de%20Janeiro&combustivel=6&autonomia=12
+```
+
+Resposta:
+
+```json
+{
+    "path":[
+        "Curitiba",
+        "São Paulo",
+        "Rio de Janeiro"
+    ],
+    "distance":837,
+    "fuelCost":418.5,
+    "tollCost":70,
+    "totalCost":488.5,
+    "found":true
+}
+```
+
+---
+
+## GET /comparar
+
+Executa dois algoritmos:
+
+- implementação própria do Dijkstra;
+- implementação da biblioteca `github.com/dominikbraun/graph`.
+
+Permite verificar se ambos encontram o mesmo resultado.
+
+Exemplo:
+
+```
+GET /comparar?origem=Curitiba&destino=Manaus&combustivel=6&autonomia=12
+```
+
+Resposta:
+
+```json
+{
+    "meu": {...},
+    "lib": {...},
+    "custosBatem": true,
+    "mesmoCaminho": true
+}
+```
+
+---
+
+# Testes
+
+Os testes automatizados verificam:
+
+- exemplo calculado manualmente;
+- capitais sem rota;
+- origem igual ao destino;
+- comparação entre Dijkstra e Bellman-Ford;
+- validação do caminho encontrado;
+- conferência dos custos calculados.
+
+Execute:
+
+```bash
+go test ./...
+```
+
+---
+
+# Tecnologias utilizadas
+
+- Go
+- Lista de Adjacências
+- Dijkstra
+- Bellman-Ford (testes)
+- Heap (`container/heap`)
+- HTTP
+- JSON
+- OpenAPI
