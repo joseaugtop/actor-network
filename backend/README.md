@@ -1,7 +1,7 @@
 # 8 Graus de Network — Backend
 
 Backend em Go para o trabalho **TD 01 — 8 Graus de Network** (Teoria de Grafos / UNESC).
-Modela um grafo bipartido **Filme ↔ Ator** a partir de `api/latest_movies.json` e expõe uma
+Modela um grafo não direcionado bipartido **Filme ↔ Ator** a partir de `api/latest_movies.json` e expõe uma
 API HTTP para consultar os relacionamentos via BFS.
 
 ## Estrutura
@@ -11,18 +11,20 @@ backend/
 ├── api/latest_movies.json     # dataset de filmes/atores (seed)
 ├── cmd/main/main.go           # ponto de entrada — carrega o JSON e sobe o servidor
 ├── model/movie.go             # modelo Movie { id, title, cast }
-├── service/service.go         # construção do grafo + algoritmos (BFS, BFS≤8)
-├── server/server.go           # roteamento HTTP, handlers e CORS
+├── service/service.go         # construção do grafo + algoritmos (BFS e DFS)
+├── server/server.go           # roteamento HTTP, CORS e helpers
+├── server/handlers.go         # handlers de cada endpoint + tipos de resposta
 ├── scripts/makefile           # atalhos de build/run
 ├── go.mod / go.sum
-└── README.md
+├── README.md
+└── ROADMAP.md                 # guia de estudo dos algoritmos
 ```
 
 ## Pré-requisitos
 
 - Go 1.25+
 - A única dependência externa é [`github.com/dominikbraun/graph`](https://github.com/dominikbraun/graph),
-  usada apenas como estrutura de armazenamento. **As buscas (BFS) são implementadas
+  usada apenas como estrutura de armazenamento. **As buscas são implementadas
   manualmente** em `service/service.go` para atender ao escopo do trabalho.
 
 ## Como executar
@@ -49,8 +51,7 @@ servidor iniciado em http://localhost:8081
 ## Como o grafo é construído
 
 - **Vértices**: cada filme (`title`) e cada ator do `cast` viram um vértice (strings).
-- **Arestas**: para cada par (filme, ator), são adicionadas arestas nos **dois sentidos**
-  (filme → ator e ator → filme), conforme exigido pelo enunciado.
+- **Arestas**: o grafo é **não direcionado** — uma única aresta por par (filme, ator) já conecta os dois sentidos automaticamente.
 - Duplicatas no dataset (IDs repetidos, mesmo ator listado duas vezes em um filme) são
   toleradas: `AddVertex` ignora vértices repetidos e o erro de `AddEdge` para arestas já
   existentes é descartado.
@@ -115,8 +116,9 @@ Ator inexistente (HTTP 404):
 ```
 
 ### `GET /bfs8?from=<ator>&to=<ator>&max=<numero>`
-Adaptação do BFS: retorna **todos os caminhos mínimos** cujo comprimento (em arestas)
-seja ≤ `max` (padrão **8**). Útil quando há múltiplos relacionamentos curtos equivalentes.
+Enumera **todos os caminhos simples** entre dois atores com comprimento ≤ `max` (padrão **8**).
+Usa DFS com aprofundamento iterativo: executa uma DFS por profundidade (d = 1..max),
+garantindo que caminhos menores sejam encontrados antes dos maiores.
 
 ```bash
 curl "http://localhost:8081/bfs8?from=Zendaya&to=Samuel%20L.%20Jackson"
@@ -131,7 +133,8 @@ curl "http://localhost:8081/bfs8?from=Zendaya&to=Samuel%20L.%20Jackson"
     }
   ],
   "count": 1,
-  "length": 2,
+  "minLength": 2,
+  "maxLength": 2,
   "found": true
 }
 ```
@@ -144,14 +147,10 @@ Quando não há relação dentro do limite:
 
 ## Algoritmos
 
-- **BFS (`/bfs`)**: BFS padrão sobre lista de adjacência, com mapa de pais para reconstruir
-  o caminho mínimo.
-- **BFS adaptado (`/bfs8`)**: BFS que registra **todos** os predecessores no mesmo nível
-  mínimo (DAG de predecessores). Após encontrar o destino, faz uma travessia recursiva
-  do destino até a origem para enumerar **todos** os caminhos de comprimento mínimo
-  ≤ `max`. A poda no nível do alvo garante terminação rápida mesmo em grafos densos.
+- **BFS (`/bfs`)**: BFS padrão sobre lista de adjacências, com mapa de pais para reconstruir o caminho mínimo. Garante o menor caminho porque visita por camadas.
+- **DFS com aprofundamento iterativo (`/bfs8`)**: para cada profundidade d de 1 até `max`, executa uma DFS que só aceita caminhos de exatamente d arestas. Enumera todos os caminhos simples em ordem crescente de tamanho. Limitado a `10.000` resultados para evitar esgotamento de memória em grafos densos.
 
-> Observação: como o grafo é bipartido, todo caminho entre atores tem **comprimento par**
+> Como o grafo é bipartido, todo caminho entre dois atores tem **comprimento par**
 > (alterna ator → filme → ator → ...).
 
 ## Notas sobre o dataset
@@ -161,6 +160,5 @@ duplicatas conhecidas:
 
 - ~25 IDs de filmes repetidos
 - ~50 títulos de filmes repetidos (remakes ou entradas redundantes)
-- 4 filmes com o mesmo ator listado duas vezes no `cast`
 
-Essas duplicatas não corrompem o grafo: o builder as absorve silenciosamente.
+Essas duplicatas não corrompem o grafo: o `Seed` as absorve silenciosamente.

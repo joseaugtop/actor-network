@@ -1,3 +1,4 @@
+// Lê o dataset, monta o grafo e sobe o servidor HTTP.
 package main
 
 import (
@@ -12,18 +13,18 @@ import (
 )
 
 func main() {
-	data, err := os.ReadFile("api/latest_movies.json")
+	data, err := os.ReadFile("api/capitais.json")
 	if err != nil {
-		log.Fatalf("erro ao ler o arquivo latest_movies.json: %v", err)
+		log.Fatalf("erro ao ler o arquivo capitais.json: %v", err)
 	}
 
-	var movies []model.Movie
-	if err := json.Unmarshal(data, &movies); err != nil {
-		log.Fatalf("erro ao processar o JSON de filmes: %v", err)
+	var cities []map[string]model.City
+	if err := json.Unmarshal(data, &cities); err != nil {
+		log.Fatalf("erro ao processar o JSON de cidades: %v", err)
 	}
 
-	svc := service.New(movies)
-	log.Printf("grafo construído — %d filmes, %d atores únicos", len(movies), len(svc.Actors()))
+	svc := service.Seed(cities)
+	log.Printf("grafo construído — %d capitais", len(svc.Capitals()))
 
 	srv := server.New(svc)
 	log.Println("servidor iniciado em http://localhost:8081")

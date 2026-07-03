@@ -1,277 +1,227 @@
-@let actorList = actors();
+@let capitalList = capitais();
 
-<div class="mx-auto flex max-w-5xl flex-col gap-5 px-5 pb-16 pt-8">
-  <!-- Hero -->
-  <header class="px-4 pb-2 pt-7 text-center">
-    <h1 class="text-4xl font-extrabold leading-tight md:text-5xl">
-      <span class="mr-2">🎬</span>
-      <span
-        class="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent"
-      >
-        8 Graus de Network
-      </span>
-    </h1>
-    <p class="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-slate-400">
-      Encontre o relacionamento mais próximo entre dois atores através dos
-      filmes em comum, usando uma busca em largura (BFS) sobre um grafo de
-      Atores e Filmes.
-    </p>
-    @if (!loadingActors() && !loadError()) {
-      <span
-        class="mt-3 inline-block rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300"
-      >
-        {{ actorsCount() }} atores carregados
+<div class="mx-auto flex min-h-screen max-w-4xl flex-col px-6 py-10">
+
+  <!-- Top bar -->
+  <nav class="mb-10 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-emerald-600 to-teal-700">
+        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <span class="text-lg font-bold tracking-tight text-gray-800">Caminho Mais Barato</span>
+    </div>
+    @if (!loadingCapitais() && !loadError()) {
+      <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5">
+        <span class="h-2 w-2 rounded-full bg-green-500"></span>
+        <span class="text-xs font-semibold text-emerald-800">{{ capitalList.length }} capitais</span>
       </span>
     }
-  </header>
+  </nav>
 
-  <!-- Status / erro de carregamento -->
-  @if (loadingActors()) {
-    <div
-      class="rounded-2xl border border-white/10 bg-white/5 p-5 text-center font-medium shadow-2xl backdrop-blur"
-    >
-      Carregando atores…
+  <!-- Carregando capitais -->
+  @if (loadingCapitais()) {
+    <div class="mx-auto flex w-full max-w-2xl items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-12 shadow-sm">
+      <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></span>
+      <span class="text-sm font-medium text-gray-500">Carregando capitais…</span>
     </div>
   }
 
+  <!-- Erro de carregamento -->
   @if (loadError()) {
-    <div
-      class="rounded-2xl border border-red-400/30 bg-white/5 p-5 text-center font-medium text-red-400 shadow-2xl backdrop-blur"
-    >
-      {{ loadError() }}
+    <div class="mx-auto w-full max-w-2xl rounded-2xl border border-gray-200 border-l-4 border-l-red-500 bg-red-50 p-6 shadow-sm">
+      <h3 class="text-sm font-bold text-red-700">Falha na conexão</h3>
+      <p class="mt-1 text-sm leading-relaxed text-red-600">{{ loadError() }}</p>
     </div>
   }
 
-  <!-- Formulário -->
-  @if (!loadingActors() && !loadError()) {
-    <section
-      class="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur"
-    >
-      <datalist id="actor-options">
-        @for (a of actorList; track a) {
-          <option [value]="a"></option>
-        }
-      </datalist>
+  <!-- Conteúdo principal -->
+  @if (!loadingCapitais() && !loadError()) {
+    <div class="mx-auto w-full max-w-3xl">
 
-      <div
-        class="grid items-end gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4"
-      >
-        <label class="flex flex-col gap-1.5">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400"
-          >
-            Ator de Origem
-          </span>
-          <input
-            type="text"
-            list="actor-options"
-            placeholder="Ex: Tom Hanks"
-            autocomplete="off"
-            [ngModel]="from()"
-            (ngModelChange)="from.set($event)"
-            class="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-          />
-        </label>
-
-        <button
-          type="button"
-          (click)="swap()"
-          aria-label="Inverter origem e destino"
-          title="Inverter origem e destino"
-          class="mx-auto h-11 w-11 rotate-90 cursor-pointer rounded-full border border-white/10 bg-white/5 text-lg text-slate-100 transition duration-300 hover:rotate-[270deg] hover:bg-cyan-400/15 md:rotate-0 md:hover:rotate-180"
-        >
-          ⇄
-        </button>
-
-        <label class="flex flex-col gap-1.5">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400"
-          >
-            Ator de Destino
-          </span>
-          <input
-            type="text"
-            list="actor-options"
-            placeholder="Ex: Zendaya"
-            autocomplete="off"
-            [ngModel]="to()"
-            (ngModelChange)="to.set($event)"
-            class="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-          />
-        </label>
+      <!-- Hero -->
+      <div class="mb-8 text-center">
+        <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 md:text-5xl">
+          Rota de
+          <span class="bg-linear-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent"> Menor Custo </span>
+          entre Capitais
+        </h1>
+        <p class="mx-auto mt-3 max-w-xl text-base leading-relaxed text-gray-500">
+          Informe origem, destino, preço do combustível e a autonomia do veículo.
+          O algoritmo de Dijkstra encontra a rota mais barata somando combustível e pedágios.
+        </p>
       </div>
 
-      <div class="mt-5 flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          [disabled]="!canSearch()"
-          (click)="runBfs()"
-          class="cursor-pointer rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-500 px-6 py-3 text-base font-semibold text-slate-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-        >
-          🔎 BFS · Caminho mais curto
-        </button>
+      <!-- Formulário -->
+      <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div class="h-1 w-full bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-500"></div>
 
-        <button
-          type="button"
-          [disabled]="!canSearch()"
-          (click)="runBfs8()"
-          class="cursor-pointer rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-        >
-          🌐 BFS · Comprimento máximo 8
-        </button>
-      </div>
-    </section>
-  }
-
-  <!-- Buscando -->
-  @if (searching()) {
-    <div
-      class="rounded-2xl border border-white/10 bg-white/5 p-5 text-center font-medium shadow-2xl backdrop-blur"
-    >
-      Buscando…
-    </div>
-  }
-
-  <!-- Erro -->
-  @if (errorMessage()) {
-    <div
-      class="rounded-2xl border border-red-400/30 bg-white/5 p-5 text-center font-medium text-red-400 shadow-2xl backdrop-blur"
-    >
-      {{ errorMessage() }}
-    </div>
-  }
-
-  <!-- Resultado BFS -->
-  @if (mode() === 'bfs' && bfsResult(); as res) {
-    <section
-      class="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur"
-    >
-      <h2 class="mb-3 text-xl font-bold text-cyan-400">Resultado · BFS</h2>
-
-      @if (!res.found) {
-        <p class="py-5 text-center font-medium text-red-400">
-          ❌
-          {{
-            res.message ??
-              'Nenhum relacionamento encontrado entre os atores informados.'
-          }}
-        </p>
-      } @else {
-        <p class="my-1 mb-4 text-slate-400">
-          Comprimento do caminho:
-          <strong class="text-lg text-slate-100">{{ res.length }}</strong>
-          arestas
-          <span class="ml-1 text-xs opacity-70"
-            >({{ res.path.length }} vértices)</span
-          >
-        </p>
-
-        <ol class="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-3 p-0">
-          @for (node of res.path; track node + $index) {
-            <li
-              class="relative flex min-w-[120px] flex-col rounded-xl border bg-slate-900/50 px-3.5 py-2.5"
-              [class.border-cyan-400/40]="!isMovieNode(node, $index)"
-              [class.border-amber-400/40]="isMovieNode(node, $index)"
-            >
-              @if ($index < res.path.length - 1) {
-                <span
-                  class="absolute -right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400"
-                  >→</span
-                >
-              }
-              <span
-                class="text-[11px] font-semibold uppercase tracking-wider opacity-80"
-                [class.text-cyan-400]="!isMovieNode(node, $index)"
-                [class.text-amber-400]="isMovieNode(node, $index)"
+        <div class="p-6 md:p-8">
+          <!-- Origem / Destino -->
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:gap-3">
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">Origem</label>
+              <select
+                [ngModel]="origem()"
+                (ngModelChange)="origem.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
               >
-                {{ isMovieNode(node, $index) ? '🎞️ Filme' : '🎭 Ator' }}
-              </span>
-              <span class="text-sm font-semibold text-slate-100">{{ node }}</span>
-            </li>
-          }
-        </ol>
-      }
-    </section>
-  }
-
-  <!-- Resultado BFS 8 -->
-  @if (mode() === 'bfs8' && bfs8Result(); as res) {
-    <section
-      class="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur"
-    >
-      <h2 class="mb-3 text-xl font-bold text-cyan-400">
-        Resultado · BFS Comprimento Máximo 8
-      </h2>
-
-      @if (!res.found) {
-        <p class="py-5 text-center font-medium text-red-400">
-          ❌
-          {{
-            res.message ??
-              'Nenhum relacionamento encontrado dentro do comprimento máximo.'
-          }}
-        </p>
-      } @else {
-        <p class="my-1 mb-4 text-slate-400">
-          <strong class="text-lg text-slate-100">{{ res.count }}</strong>
-          caminho(s) encontrado(s) com comprimento mínimo
-          <strong class="text-lg text-slate-100">{{ res.length }}</strong>
-          arestas.
-        </p>
-
-        <div
-          class="flex max-h-[70vh] flex-col gap-3.5 overflow-y-auto pr-1"
-        >
-          @for (
-            item of res.paths;
-            track trackPath($index, item);
-            let i = $index
-          ) {
-            <article
-              class="rounded-xl border border-white/10 bg-slate-900/40 p-3.5"
-            >
-              <header class="mb-2.5 flex items-center justify-between">
-                <span class="font-bold text-violet-400">#{{ i + 1 }}</span>
-                <span class="text-xs text-slate-400"
-                  >{{ item.length }} arestas</span
-                >
-              </header>
-              <ol
-                class="m-0 flex list-none flex-wrap items-center gap-x-6 gap-y-3 p-0"
-              >
-                @for (node of item.path; track node + $index) {
-                  <li
-                    class="relative flex min-w-[120px] flex-col rounded-xl border bg-slate-900/50 px-3.5 py-2.5"
-                    [class.border-cyan-400/40]="!isMovieNode(node, $index)"
-                    [class.border-amber-400/40]="isMovieNode(node, $index)"
-                  >
-                    @if ($index < item.path.length - 1) {
-                      <span
-                        class="absolute -right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400"
-                        >→</span
-                      >
-                    }
-                    <span
-                      class="text-[11px] font-semibold uppercase tracking-wider opacity-80"
-                      [class.text-cyan-400]="!isMovieNode(node, $index)"
-                      [class.text-amber-400]="isMovieNode(node, $index)"
-                    >
-                      {{ isMovieNode(node, $index) ? '🎞️' : '🎭' }}
-                    </span>
-                    <span class="text-sm font-semibold text-slate-100">{{
-                      node
-                    }}</span>
-                  </li>
+                <option value="" disabled>Selecione a capital de origem</option>
+                @for (c of capitalList; track c) {
+                  <option [value]="c">{{ c }}</option>
                 }
-              </ol>
-            </article>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              (click)="swap()"
+              aria-label="Inverter origem e destino"
+              title="Inverter"
+              class="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-400 transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600 md:mx-1"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+            </button>
+
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">Destino</label>
+              <select
+                [ngModel]="destino()"
+                (ngModelChange)="destino.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+              >
+                <option value="" disabled>Selecione a capital de destino</option>
+                @for (c of capitalList; track c) {
+                  <option [value]="c">{{ c }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Combustível / Autonomia -->
+          <div class="mt-4 flex flex-col gap-4 md:flex-row md:gap-3">
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
+                Preço do combustível (R$/litro)
+              </label>
+              <input
+                type="number" min="0" step="0.01" placeholder="Ex.: 5.89"
+                [ngModel]="combustivel()"
+                (ngModelChange)="combustivel.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 placeholder:font-normal placeholder:text-gray-400 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-gray-400">
+                Autonomia (km/litro)
+              </label>
+              <input
+                type="number" min="0" step="0.1" placeholder="Ex.: 12"
+                [ngModel]="autonomia()"
+                (ngModelChange)="autonomia.set($event)"
+                class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium text-gray-800 outline-none transition-all duration-200 placeholder:font-normal placeholder:text-gray-400 focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+              />
+            </div>
+          </div>
+
+          <!-- Botão -->
+          <div class="mt-6">
+            <button
+              type="button"
+              [disabled]="!canSearch()"
+              (click)="buscar()"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-br from-emerald-600 to-teal-700 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-[0_2px_8px_rgba(16,185,129,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(16,185,129,0.4)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Calcular Rota Mais Barata
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buscando -->
+      @if (searching()) {
+        <div class="mt-6 flex items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-10 shadow-sm">
+          <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></span>
+          <span class="text-sm font-medium text-gray-500">Calculando rota…</span>
+        </div>
+      }
+
+      <!-- Erro -->
+      @if (errorMessage()) {
+        <div class="mt-6 rounded-2xl border border-gray-200 border-l-4 border-l-red-500 bg-red-50 p-5 shadow-sm">
+          <p class="text-sm font-medium text-red-700">{{ errorMessage() }}</p>
+        </div>
+      }
+
+      <!-- Resultado -->
+      @if (resultado(); as res) {
+        <div class="mt-6">
+          @if (!res.found) {
+            <!-- Rota inexistente -->
+            <div class="rounded-2xl border border-gray-200 border-l-4 border-l-red-400 bg-red-50 p-6 shadow-sm">
+              <h3 class="text-sm font-bold text-red-700">Sem rota</h3>
+              <p class="mt-0.5 text-sm text-red-600">
+                {{ res.message ?? 'Não existe rota entre as capitais selecionadas.' }}
+              </p>
+            </div>
+          } @else {
+            <!-- Resumo de custos -->
+            <div class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <span class="block text-2xl font-extrabold text-gray-800">{{ res.distance }}</span>
+                <span class="text-xs font-medium uppercase tracking-wider text-gray-400">km</span>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <span class="block text-xl font-extrabold text-gray-800">{{ brl(res.fuelCost) }}</span>
+                <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Combustível</span>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <span class="block text-xl font-extrabold text-gray-800">{{ brl(res.tollCost) }}</span>
+                <span class="text-xs font-medium uppercase tracking-wider text-gray-400">Pedágios</span>
+              </div>
+              <div class="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center shadow-sm">
+                <span class="block text-xl font-extrabold text-emerald-700">{{ brl(res.totalCost) }}</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Total</span>
+              </div>
+            </div>
+
+            <!-- Rota (sequência de capitais) -->
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+              <h3 class="mb-3 text-sm font-bold text-gray-700">Rota ({{ res.path.length }} capitais)</h3>
+              <div class="flex flex-wrap items-center gap-2">
+                @for (capital of res.path; track capital + $index) {
+                  @if ($index > 0) {
+                    <span class="inline-flex items-center justify-center text-emerald-500">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                      </svg>
+                    </span>
+                  }
+                  <div class="inline-flex items-center gap-1.5 rounded-lg border-2 border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-gray-800">
+                    <span class="text-xs">📍</span>
+                    <span>{{ capital }}</span>
+                  </div>
+                }
+              </div>
+            </div>
           }
         </div>
       }
-    </section>
+
+    </div>
   }
 
-  <footer class="mt-5 text-center text-xs text-slate-400">
-    <span>UNESC · Teoria de Grafos · TD 01</span>
+  <!-- Footer -->
+  <footer class="mt-auto pt-12 text-center">
+    <div class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2">
+      <span class="text-xs font-medium text-gray-400">UNESC · Teoria de Grafos · TD 02</span>
+    </div>
   </footer>
+
 </div>
